@@ -1,0 +1,110 @@
+/* ============================================================
+   UI EFFECTS — restrained, consistent interaction polish
+   Buttons: light sweep, lift, press, ripple, focus ring
+   Cards / panels: soft 3D tilt + cursor glare (driven by UIEffects.js)
+   All motion is disabled under prefers-reduced-motion.
+   ============================================================ */
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s ease, background 0.25s ease,
+              border-color 0.25s ease, color 0.25s ease;
+  will-change: transform;
+}
+
+/* diagonal light sweep on hover */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.btn:hover:not(:disabled)::before { transform: translateX(120%); }
+
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.97); transition-duration: 0.08s; }
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5), 0 0 0 1px rgba(165, 180, 252, 0.35);
+}
+.btn-accent:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(6, 182, 212, 0.45); }
+.btn-secondary:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+.btn-outline-primary:hover:not(:disabled) { box-shadow: 0 0 18px rgba(99, 102, 241, 0.3); }
+.btn-danger:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(244, 63, 94, 0.3); }
+
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* click ripple (element injected by UIEffects.js) */
+.fx-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: fx-ripple 0.6s ease-out forwards;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes fx-ripple { to { transform: scale(1); opacity: 0; } }
+
+/* keyboard focus */
+.btn:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+/* ── Inputs ──────────────────────────────────────────────── */
+.form-input { transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.form-input:focus {
+  border-color: rgba(129, 140, 248, 0.8);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+}
+
+/* ── 3D tilt surfaces ────────────────────────────────────── */
+.fx-tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transition: transform 0.12s ease-out, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+.fx-tilt.fx-tilt-leave {
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease,
+              border-color 0.25s ease, background 0.25s ease;
+}
+.opportunity-card.fx-tilt:hover {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px);
+}
+
+/* cursor-tracking glare */
+.fx-tilt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(165, 180, 252, 0.16), transparent 55%);
+  opacity: var(--glare, 0);
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+[data-theme="light"] .fx-tilt::after {
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(99, 102, 241, 0.12), transparent 55%);
+}
+
+/* ── Entrance: cards fade/rise in once ───────────────────── */
+@keyframes fx-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.opportunities-grid > .opportunity-card { animation: fx-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.opportunities-grid > .opportunity-card:nth-child(2) { animation-delay: 0.05s; }
+.opportunities-grid > .opportunity-card:nth-child(3) { animation-delay: 0.1s; }
+.opportunities-grid > .opportunity-card:nth-child(4) { animation-delay: 0.15s; }
+.opportunities-grid > .opportunity-card:nth-child(n+5) { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn::before, .fx-tilt, .opportunities-grid > .opportunity-card { transition: none !important; animation: none !important; }
+  .btn:hover:not(:disabled), .btn:active:not(:disabled) { transform: none; }
+  .fx-ripple { display: none; }
+}

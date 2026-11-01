@@ -104,16 +104,27 @@ const VERT = /* glsl */`
   varying vec3  vColor;
   varying float vGlow;
 
+  varying float vBoost;
+
   uniform float uTime;
   uniform float uPixelRatio;
+  uniform vec3  uMouse;   // cursor position in world space
 
   void main() {
     vColor = aColor;
     vGlow  = aGlow;
 
+    // Gentle per-particle twinkle (phase derived from rest position)
+    float tw = 0.88 + 0.12 * sin(uTime * 1.6 + dot(position, vec3(0.129, 0.782, 0.377)) * 6.0);
+    vGlow *= tw;
+
+    // Cursor "light": nodes near the pointer swell and brighten
+    vec3  wp = (modelMatrix * vec4(position, 1.0)).xyz;
+    vBoost   = smoothstep(46.0, 0.0, distance(wp, uMouse));
+
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     // Size attenuates with depth — bigger up close, smaller far away
-    gl_PointSize = aSize * uPixelRatio * (280.0 / -mvPos.z);
+    gl_PointSize = aSize * tw * (1.0 + vBoost * 0.7) * uPixelRatio * (280.0 / -mvPos.z);
     gl_Position  = projectionMatrix * mvPos;
   }
 `;
@@ -122,6 +133,7 @@ const VERT = /* glsl */`
 const FRAG = /* glsl */`
   varying vec3  vColor;
   varying float vGlow;
+  varying float vBoost;
 
   void main() {
     // Soft circular disc with radial alpha fade → looks like a glowing orb
@@ -130,7 +142,8 @@ const FRAG = /* glsl */`
     // Inner bright core
     float core  = 1.0 - smoothstep(0.0, 0.45, d);
     vec3  col   = mix(vColor, vec3(1.0), core * vGlow * 0.7);
-    gl_FragColor = vec4(col, alpha * (0.72 + vGlow * 0.28));
+    col = mix(col, vec3(1.0), vBoost * 0.35 * core);
+    gl_FragColor = vec4(col, min(1.0, alpha * (0.72 + vGlow * 0.28 + vBoost * 0.3)));
   }
 `;
 
@@ -244,6 +257,7 @@ const Background3D = () => {
       uniforms: {
         uTime:       { value: 0 },
         uPixelRatio: { value: DPR },
+        uMouse:      { value: new THREE.Vector3(9999, 9999, 9999) },
       },
       transparent:  true,
       depthWrite:   false,
@@ -252,6 +266,31 @@ const Background3D = () => {
 
     const points = new THREE.Points(geo, mat);
     scene.add(points);
+
+    // ── Distant starfield (separate depth layer → real parallax)
+    const STAR_COUNT = 900;
+    const starPos = new Float32Array(STAR_COUNT * 3);
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      const rr = rand(260, 420);
+      starPos[i*3]   = rr * Math.sin(ph) * Math.cos(th);
+      starPos[i*3+1] = rr * Math.sin(ph) * Math.sin(th);
+      starPos[i*3+2] = rr * Math.cos(ph);
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+      color:           isDarkRef.current ? 0x94a3b8 : 0x64748b,
+      size:            1.6,
+      sizeAttenuation: false,
+      transparent:     true,
+      opacity:         isDarkRef.current ? 0.55 : 0.28,
+      depthWrite:      false,
+      fog:             false,
+    });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
 
     // ── Edge / connection lines (pre-allocated LineSegments)
     const edgePositions  = new Float32Array(MAX_EDGES * 6); // 2 verts × 3 floats
@@ -287,7 +326,7 @@ const Background3D = () => {
     // Store everything in sceneRef
     sceneRef.current = {
       renderer, scene, camera, points, lines,
-      geo, mat, edgeGeo, edgePosAttr, edgeMat,
+      geo, mat, edgeGeo, edgePosAttr, edgeMat, stars, starGeo, starMat,
       shockMesh, shockMat,
       positions, restPos, velocities, driftPhase, driftFreq,
       sizes, colors, glows,
@@ -296,7 +335,7 @@ const Background3D = () => {
     // ── Physics state
     stateRef.current = {
       frame: 0,
-      mouse3D: new THREE.Vector3(),     // cursor in world space
+      mouse3D: new THREE.Vector3(9999, 9999, 9999),     // cursor in world space
       mousePrev: { x: 0, y: 0 },        // previous NDC coords
       mouseVel: 0,                       // cursor speed
       targetRotX: 0, targetRotY: 0,     // constellation rotation target
@@ -304,6 +343,8 @@ const Background3D = () => {
       shockwaves: [],                    // active shockwave events [{origin, age}]
       scrollY: 0,
       targetCamZ: CAMERA_Z_DEFAULT,
+      camX: 0, camY: 0, targetCamX: 0, targetCamY: 0,
+      reduced: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
     };
 
     // ── Animation loop
@@ -372,14 +413,25 @@ const Background3D = () => {
       st.currentRotX = lerp(st.currentRotX, st.targetRotX, 0.03);
       st.currentRotY = lerp(st.currentRotY, st.targetRotY, 0.03);
 
-      sc.points.rotation.x = st.currentRotX + t * BASE_ROTATION * 0.6;
-      sc.points.rotation.y = st.currentRotY + t * BASE_ROTATION;
+      const spin = st.reduced ? 0 : BASE_ROTATION;
+      sc.points.rotation.x = st.currentRotX + t * spin * 0.6;
+      sc.points.rotation.y = st.currentRotY + t * spin;
+      // Starfield counter-rotates slowly → depth parallax
+      sc.stars.rotation.y = -st.currentRotY * 0.35 - t * spin * 0.25;
+      sc.stars.rotation.x = -st.currentRotX * 0.35;
       sc.lines.rotation.copy(sc.points.rotation);
       sc.shockMesh.rotation.copy(sc.points.rotation);
 
       // ── Camera zoom from scroll
       const camZ = sc.camera.position.z;
       sc.camera.position.z = lerp(camZ, st.targetCamZ, 0.05);
+      // Subtle cursor parallax on the camera
+      st.camX = lerp(st.camX, st.targetCamX, 0.04);
+      st.camY = lerp(st.camY, st.targetCamY, 0.04);
+      sc.camera.position.x = st.camX;
+      sc.camera.position.y = st.camY;
+      sc.camera.lookAt(0, 0, 0);
+      sc.mat.uniforms.uMouse.value.copy(st.mouse3D);
 
       // ── Per-particle physics
       const m3 = st.mouse3D;
@@ -410,7 +462,7 @@ const Background3D = () => {
         const wx = pos[ix], wy = pos[iy], wz = pos[iz];
 
         // ── Idle Lissajous drift around rest position
-        const drift = IDLE_DRIFT_AMP;
+        const drift = st.reduced ? IDLE_DRIFT_AMP * 0.25 : IDLE_DRIFT_AMP;
         const driftX = Math.sin(t * driftFreq[ix] + driftPhase[ix]) * drift;
         const driftY = Math.cos(t * driftFreq[iy] + driftPhase[iy]) * drift;
         const driftZ = Math.sin(t * driftFreq[iz] + driftPhase[iz]) * drift * 0.5;
@@ -490,6 +542,8 @@ const Background3D = () => {
       // Update rotation targets (tilt constellation toward cursor)
       st.targetRotY = ndcX * 0.45;
       st.targetRotX = -ndcY * 0.25;
+      st.targetCamX = ndcX * 7;
+      st.targetCamY = ndcY * 4.5;
 
       // Project cursor to world-space at z=0 plane (constellation centre)
       ndcMouse.set(ndcX, ndcY);
@@ -568,6 +622,8 @@ const Background3D = () => {
         sc.mat?.dispose();
         sc.edgeGeo?.dispose();
         sc.edgeMat?.dispose();
+        sc.starGeo?.dispose();
+        sc.starMat?.dispose();
         sc.shockGeo?.dispose();
         sc.shockMat?.dispose();
         if (mount && sc.renderer.domElement.parentNode === mount) {
@@ -593,6 +649,8 @@ const Background3D = () => {
     sc.edgeMat.color.set(pal.edgeColor);
     sc.edgeMat.opacity = pal.edgeOpacity;
     sc.shockMat.color.set(isDark ? 0x06b6d4 : 0x6366f1);
+    sc.starMat.color.set(isDark ? 0x94a3b8 : 0x64748b);
+    sc.starMat.opacity = isDark ? 0.55 : 0.28;
 
     // Re-randomise node colours with new palette
     const { colors, glows, positions } = sc;
