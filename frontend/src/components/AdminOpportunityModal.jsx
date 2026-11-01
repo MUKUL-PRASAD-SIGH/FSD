@@ -77,7 +77,7 @@ const AdminOpportunityModal = ({ opportunity, onClose, onSaved }) => {
               {isEditing ? 'Edit Opportunity' : 'Publish New Technical Opportunity'}
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-              Course 24CIE554 - Admin CRUD Portal
+              Opportunity management
             </p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>

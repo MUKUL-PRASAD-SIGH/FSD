@@ -36,7 +36,7 @@ const LandingPage = ({
         <div>
           <div className="hero-pill-badge">
             <span className="pulse-dot"></span>
-            <span>Course 24CIE554 • Intelligent Talent & Opportunity Discovery</span>
+            <span>AI-powered opportunity discovery for students</span>
           </div>
 
           <h1 className="hero-heading">
@@ -77,7 +77,7 @@ const LandingPage = ({
                 style={{ padding: '12px 20px', fontSize: '0.92rem' }}
                 onClick={onOpenAuth}
               >
-                <span>1-Click Demo Login</span>
+                <span>Try a Demo Account</span>
               </button>
             )}
           </div>
@@ -89,11 +89,11 @@ const LandingPage = ({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Zap size={16} color="#f59e0b" />
-              <span><strong>Live</strong> MongoDB Grounding</span>
+              <span><strong>Live</strong> Opportunity Data</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Terminal size={16} color="#38bdf8" />
-              <span><strong>Audit</strong> Telemetry</span>
+              <span><strong>Full</strong> Audit Logging</span>
             </div>
           </div>
         </div>
@@ -197,7 +197,7 @@ const LandingPage = ({
         </div>
         <div className="stat-item">
           <div className="stat-number">100%</div>
-          <div className="stat-label">Request Audit Telemetry</div>
+          <div className="stat-label">Requests Audit-Logged</div>
         </div>
       </section>
 
@@ -303,10 +303,10 @@ const LandingPage = ({
           <span className="section-tag">
             <Sparkles size={14} /> Comprehensive Features
           </span>
-          <h2 className="section-title">Built with MERN Stack Precision</h2>
+          <h2 className="section-title">Everything You Need in One Platform</h2>
           <p className="section-description">
-            Fully engineered for Course 24CIE554 with clean separation of concerns, secure RBAC,
-            and real-time request lifecycle telemetry.
+            Discover, apply, collaborate and track progress with secure role-based access
+            and complete request-level audit logging.
           </p>
         </div>
 
@@ -376,10 +376,10 @@ const LandingPage = ({
             <div className="feature-icon-wrapper" style={{ background: 'rgba(56, 189, 248, 0.15)' }}>
               <Terminal size={24} color="#38bdf8" />
             </div>
-            <span className="feature-tag-pill">Academic Defense • Live Telemetry</span>
+            <span className="feature-tag-pill">Transparency • Audit Trail</span>
             <h3 className="feature-card-title">Server Audit Log Inspector</h3>
             <p className="feature-card-desc">
-              Demonstrate complete HTTP lifecycle transparency to professors—tracking routes, auth context, execution duration in milliseconds, and response codes.
+              Inspect live server activity, including routes, authenticated user, response time and status codes.
             </p>
           </div>
         </div>
@@ -519,7 +519,7 @@ const LandingPage = ({
               style={{ padding: '14px 22px', fontSize: '1rem' }}
               onClick={onOpenAuth}
             >
-              <span>1-Click Demo Sign In</span>
+              <span>Try a Demo Account</span>
             </button>
           )}
         </div>
@@ -534,7 +534,6 @@ const LandingPage = ({
             </div>
             <div>
               <span className="brand-title" style={{ fontSize: '1.15rem' }}>HackElite AI</span>
-              <span className="brand-badge" style={{ marginLeft: '8px' }}>24CIE554</span>
             </div>
           </div>
 
@@ -568,10 +567,10 @@ const LandingPage = ({
 
         <div className="footer-bottom">
           <span>
-            Course 24CIE554 - Full Stack Development • MERN Stack Architecture (React, Express, MongoDB, Node)
+            © HackElite AI. Built with React, Express, MongoDB and Node.js.
           </span>
           <span>
-            Designed with Glassmorphism & High-Resolution Telemetry
+            Technical opportunities, in one place.
           </span>
         </div>
       </footer>

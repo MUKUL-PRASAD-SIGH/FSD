@@ -36,7 +36,6 @@ const Navbar = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="brand-title">HackElite AI</span>
-            <span className="brand-badge">24CIE554</span>
           </div>
           <div className="nav-subtitle">
             Opportunity Discovery &amp; Analytics
@@ -118,11 +117,11 @@ const Navbar = ({
           </span>
         </button>
 
-        {/* Viva Audit Log Inspector Button */}
+        {/* Audit log button */}
         <button
           className="btn btn-secondary btn-sm"
           onClick={onOpenLogs}
-          title="Inspect Live Server Audit Logs (Course Requirement)"
+          title="View live server audit logs"
           style={{ gap: '6px' }}
         >
           <Terminal size={14} color="#38bdf8" />

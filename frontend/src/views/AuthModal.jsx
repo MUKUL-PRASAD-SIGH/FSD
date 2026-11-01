@@ -48,10 +48,10 @@ const AuthModal = ({ isOpen, onClose }) => {
         <div className="modal-header">
           <div>
             <h2 className="modal-title">
-              {isLogin ? 'Sign In to HackElite AI' : 'Join HackElite AI Ecosystem'}
+              {isLogin ? 'Welcome Back' : 'Create Your Account'}
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
-              Course 24CIE554 - Authentication & RBAC Module
+              Access your HackElite AI account
             </p>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -59,10 +59,10 @@ const AuthModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* 1-Click Quick Demo Accounts for Viva Evaluation */}
+        {/* Quick demo access */}
         <div style={{ padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#818cf8', textTransform: 'uppercase' }}>
-            ⚡ 1-Click Professor Demo Accounts:
+            Quick access with a demo account
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <button
@@ -145,7 +145,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                         checked={role === 'student'}
                         onChange={() => setRole('student')}
                       />
-                      <span>🎓 Student</span>
+                      <span>Student</span>
                     </label>
 
                     <label
@@ -168,7 +168,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                         checked={role === 'admin'}
                         onChange={() => setRole('admin')}
                       />
-                      <span>🛡 Administrator</span>
+                      <span>Administrator</span>
                     </label>
                   </div>
                 </div>
@@ -231,12 +231,12 @@ const AuthModal = ({ isOpen, onClose }) => {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Please wait...</span>
                 </>
               ) : (
                 <>
                   <LogIn size={15} />
-                  <span>{isLogin ? 'Sign In' : 'Complete Registration'}</span>
+                  <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
                 </>
               )}
             </button>
