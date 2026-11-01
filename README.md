@@ -78,7 +78,7 @@ A dedicated **Three.js WebGL 2.0 Neural Constellation Engine** renders a hyper-i
                     │   API SERVER TIER (Node.js)  │
                     │                              │
                     │  Express.js v5 REST API      │
-                    │  PORT 5000                   │
+                    │  PORT 5001                   │
                     │                              │
                     │  ┌──────────────────────┐   │
                     │  │ Middleware Stack      │   │
@@ -542,8 +542,8 @@ FSD_PROJ/
 
 ```bash
 # 1. Clone the repository
-git clone <repository-url>
-cd FSD_PROJ
+git clone https://github.com/MUKUL-PRASAD-SIGH/FSD.git
+cd FSD
 
 # 2. Install backend dependencies
 cd backend
@@ -554,49 +554,70 @@ cd ../frontend
 npm install
 ```
 
-### 8.3 Environment Configuration
+### 8.3 Start MongoDB
+
+The backend needs a MongoDB server reachable at `127.0.0.1:27017`
+(install [MongoDB Community](https://www.mongodb.com/try/download/community); on Windows it runs as the `MongoDB` service).
+Verify it is up before continuing:
+
+```bash
+# Windows PowerShell
+Test-NetConnection 127.0.0.1 -Port 27017
+```
+
+### 8.4 Environment Configuration
 
 Create `backend/.env`:
 
 ```env
 # Server
-PORT=5000
+PORT=5001
 NODE_ENV=development
 
 # MongoDB
-MONGODB_URI=mongodb://127.0.0.1:27017/hackelite_db
+MONGO_URI=mongodb://127.0.0.1:27017/hackelite_db
 
 # JWT
 JWT_SECRET=your_super_secret_key_change_this_in_production
 JWT_EXPIRES_IN=7d
 
-# Google Gemini AI
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# CORS
-CLIENT_URL=http://localhost:5173
+# Optional: Google Gemini AI (without it, the built-in answer engine is used)
+# GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### 8.4 Seed Demo Data
+> **Port note:** the API runs on **5001** and the frontend calls `http://localhost:5001/api`
+> (see `frontend/src/services/api.js`). If you change `PORT`, update that file as well,
+> plus the upload links in `ApplicationReviewModal.jsx` and `TeamFormationView.jsx`.
+> Port 5001 is used because 5000 is often occupied by other local servers.
+
+### 8.5 Seed Demo Data
+
+> **Warning:** the seed script deletes all existing users, opportunities, applications, saved items and teams first.
 
 ```bash
 cd backend
-node utils/seedData.js
+npm run seed
 ```
 
 This creates:
-- **Admin account:** `admin@hackelite.ai` / `Admin@123`
-- **Student account:** `student@hackelite.ai` / `Student@123`
-- **20+ sample opportunities** across all domains and types
 
-### 8.5 Run the Application
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@hackelite.ai` | `AdminPassword123` |
+| Student | `alex@student.edu` | `StudentPassword123` |
+| Student | `priya@student.edu` | `StudentPassword123` |
+| Student | `marcus@student.edu` | `StudentPassword123` |
+
+plus sample opportunities across all domains and types.
+
+### 8.6 Run the Application
 
 **Terminal 1 — Backend API:**
 ```bash
 cd backend
 npm start
-# ✔ Server running on http://localhost:5000
-# ✔ MongoDB connected: hackelite_db
+# ✔ HACKELITE AI BACKEND SERVER RUNNING ON PORT 5001
+# ✔ MongoDB Connected Successfully
 ```
 
 **Terminal 2 — Frontend Dev Server:**
@@ -606,9 +627,16 @@ npm run dev
 # ✔ Local: http://localhost:5173
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173**, then register a new account or use the 1-click demo buttons in the sign-in dialog.
 
-### 8.6 Production Build
+**Quick check that the API is up:** `curl http://localhost:5001/` should return `"status":"ONLINE"`.
+
+**Troubleshooting**
+- *"Could not sign in" / generic errors* — another app is probably answering on the API port; check with `curl http://localhost:5001/`.
+- *Demo login says "User not found"* — run the seed (8.5).
+- *Backend exits on start* — MongoDB is not running (8.3).
+
+### 8.7 Production Build
 
 ```bash
 cd frontend
