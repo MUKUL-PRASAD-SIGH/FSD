@@ -3,3 +3,31 @@
 .env
 .env.*
 !.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Frontend build output
+frontend/dist/
+frontend/dist-ssr/
+
+# Backend runtime files
+backend/logs/*
+!backend/logs/.gitkeep
+
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs and debugging
+*.log
+npm-debug.log*
+coverage/
+
+# Cache
+.vite/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
