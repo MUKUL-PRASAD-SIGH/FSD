@@ -450,3 +450,27 @@ test('rate limiting throttles credential stuffing', async () => {
   process.env.TEST_RATE_LIMITS = 'off';
   assert.ok(limited > 0, 'login endpoint returned 429 after the threshold');
 });
+
+test('integration self-check reports unconfigured integrations honestly and is admin-only', async () => {
+  const admin = await login('admin-e2e@example.com', 'Adm1n-E2E-Passw0rd!x');
+  const r = await call('GET', '/api/admin/integrations', { token: admin.body.token });
+  assert.equal(r.status, 200);
+  const by = Object.fromEntries(r.body.checks.map((c) => [c.name, c]));
+  assert.equal(by.mongodb.ok, true);
+  assert.equal(by.admin_bootstrap.ok, true);
+  for (const k of ['google_oauth', 'gemini_generate', 'smtp']) { assert.equal(by[k].configured, false, k); assert.equal(by[k].ok, null, k); }
+  assert.ok(!JSON.stringify(r.body).includes('E2E-PRO-KEY-1'), 'never leaks secrets');
+  const u = await register();
+  assert.equal((await call('GET', '/api/admin/integrations', { token: u.body.token })).status, 403);
+});
+
+test('source coverage dashboard API lists every adapter and admin-only manual sync guard', async () => {
+  const admin = await login('admin-e2e@example.com', 'Adm1n-E2E-Passw0rd!x');
+  const r = await call('GET', '/api/admin/sources', { token: admin.body.token });
+  assert.equal(r.status, 200);
+  assert.ok(r.body.sources.length >= 16);
+  assert.ok(r.body.sources.every((s) => 'liveListings' in s && 'lastRun' in s && 'lastSuccessAt' in s));
+  const u = await register();
+  assert.equal((await call('GET', '/api/admin/sources', { token: u.body.token })).status, 403);
+  assert.equal((await call('POST', '/api/admin/ingest/run', { token: u.body.token, body: {} })).status, 403);
+});

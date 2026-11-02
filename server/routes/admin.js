@@ -155,6 +155,12 @@ router.post('/ingest/run', asyncRoute(async (req, res) => {
   } finally { syncing = null; }
 }));
 
+// Real request to each configured integration (Gemini, SMTP, Google, Kaggle, clist, MongoDB). Admin only.
+router.get('/integrations', asyncRoute(async (_req, res) => {
+  const { checkAll } = require('../services/integrations');
+  res.json({ checks: await checkAll() });
+}));
+
 router.post('/notifier/run', asyncRoute(async (_req, res) => res.json({ created: await runNotifier() })));
 
 module.exports = router;

@@ -1,6 +1,6 @@
 // Embedding providers behind one interface. MongoDB stores the vectors (no separate vector DB).
 //   local  : deterministic feature-hashing model (words + bigrams + canonical skill tokens). No network, no key.
-//   gemini : Google text-embedding-004 (768-d). Needs GEMINI_API_KEY. Falls back to local if the call fails.
+//   gemini : Google gemini-embedding-001 truncated to 768-d. Needs GEMINI_API_KEY. Falls back to local if the call fails.
 // Every stored vector remembers the model that made it; vectors from different models are never compared.
 const { config } = require('../config/env');
 const { extractSkills } = require('./skills');
@@ -33,20 +33,28 @@ function localEmbed(text) {
   return Array.from(v, (x) => +(x / n).toFixed(5));
 }
 
-async function geminiEmbed(texts) {
-  const model = 'text-embedding-004';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:batchEmbedContents`, {
+// text-embedding-004 was retired by Google; gemini-embedding-001 is its replacement. We request 768 dimensions
+// (Matryoshka truncation) to keep vectors small, and re-normalise because truncated vectors are not unit length.
+const GEMINI_EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || 'gemini-embedding-001';
+const GEMINI_EMBED_DIMS = Number(process.env.GEMINI_EMBED_DIMS || 768);
+const geminiModelId = () => `gemini-${GEMINI_EMBED_MODEL.replace(/^gemini-/, '')}-${GEMINI_EMBED_DIMS}`;
+
+async function geminiEmbed(texts, taskType = 'SEMANTIC_SIMILARITY') {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBED_MODEL}:batchEmbedContents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.geminiKey },
-    body: JSON.stringify({ requests: texts.map((t) => ({ model: `models/${model}`, content: { parts: [{ text: t.slice(0, 8000) }] } })) }),
+    body: JSON.stringify({ requests: texts.map((t) => ({ model: `models/${GEMINI_EMBED_MODEL}`, taskType, outputDimensionality: GEMINI_EMBED_DIMS, content: { parts: [{ text: t.slice(0, 8000) }] } })) }),
     signal: AbortSignal.timeout(30000),
   });
-  if (!res.ok) throw new Error(`Gemini embeddings ${res.status}`);
+  if (!res.ok) throw new Error(`Gemini embeddings ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  return j.embeddings.map((e) => e.values);
+  return j.embeddings.map((e) => {
+    const n = Math.sqrt(e.values.reduce((s, x) => s + x * x, 0)) || 1;
+    return e.values.map((x) => +(x / n).toFixed(6));
+  });
 }
 
-const activeModel = () => (config.embeddingsProvider === 'gemini' && config.geminiKey ? 'gemini-text-embedding-004' : LOCAL_MODEL);
+const activeModel = () => (config.embeddingsProvider === 'gemini' && config.geminiKey ? geminiModelId() : LOCAL_MODEL);
 
 // Returns { model, vectors }
 async function embed(texts) {
@@ -54,7 +62,7 @@ async function embed(texts) {
     try {
       const out = [];
       for (let i = 0; i < texts.length; i += 50) out.push(...(await geminiEmbed(texts.slice(i, i + 50))));
-      return { model: 'gemini-text-embedding-004', vectors: out };
+      return { model: geminiModelId(), vectors: out };
     } catch (e) {
       console.warn(`embeddings: Gemini failed (${e.message}); using local model`);
     }
@@ -69,4 +77,4 @@ const cosine = (a, b) => {
   return d / (Math.sqrt(na) * Math.sqrt(nb) || 1);
 };
 
-module.exports = { embed, cosine, localEmbed, activeModel, LOCAL_MODEL };
+module.exports = { embed, cosine, localEmbed, activeModel, geminiEmbed, LOCAL_MODEL, GEMINI_EMBED_MODEL };
