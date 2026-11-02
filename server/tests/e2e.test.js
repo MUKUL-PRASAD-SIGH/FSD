@@ -474,3 +474,23 @@ test('source coverage dashboard API lists every adapter and admin-only manual sy
   assert.equal((await call('GET', '/api/admin/sources', { token: u.body.token })).status, 403);
   assert.equal((await call('POST', '/api/admin/ingest/run', { token: u.body.token, body: {} })).status, 403);
 });
+
+test('SERVE_CLIENT mode serves the SPA with a page CSP while the API keeps its strict one', async (t) => {
+  const fs = require('fs');
+  const path = require('path');
+  if (!fs.existsSync(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'))) return t.skip('client not built');
+  process.env.SERVE_CLIENT = 'true';
+  const srv = buildApp().listen(0);
+  const b = `http://127.0.0.1:${srv.address().port}`;
+  try {
+    const page = await fetch(`${b}/for-you`);
+    assert.equal(page.status, 200);
+    const csp = page.headers.get('content-security-policy');
+    assert.match(csp, /script-src 'self' https:\/\/accounts\.google\.com\/gsi\/client 'sha256-/);
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(csp));
+    assert.match(await page.text(), /<div id="root">/);
+    const api = await fetch(`${b}/api/health`);
+    assert.match(api.headers.get('content-security-policy'), /default-src 'none'/);
+    assert.equal((await fetch(`${b}/api/does-not-exist`)).status, 404, 'unknown API routes are not swallowed by the SPA fallback');
+  } finally { delete process.env.SERVE_CLIENT; srv.close(); }
+});

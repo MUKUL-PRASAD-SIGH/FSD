@@ -1,88 +1,88 @@
 {
   "base": "http://localhost:5173",
-  "at": "2026-11-02T16:59:44.225Z",
+  "at": "2026-11-02T17:02:18.589Z",
   "passed": 16,
   "failed": 0,
   "results": [
     {
       "name": "1. Landing / browse renders listings, stats and filters",
       "ok": true,
-      "ms": 615
+      "ms": 682
     },
     {
       "name": "2. Search and filters narrow the list",
       "ok": true,
-      "ms": 406
+      "ms": 450
     },
     {
       "name": "3. Registration enforces the password policy, then creates a student account",
       "ok": true,
-      "ms": 1874
+      "ms": 1918
     },
     {
       "name": "4. Profile: skills, interests, education and location are saved",
       "ok": true,
-      "ms": 459
+      "ms": 470
     },
     {
       "name": "5. Free plan: basic recommendations with reasons, resume upload is gated",
       "ok": true,
-      "ms": 396
+      "ms": 466
     },
     {
       "name": "6. Pro activation with a key (wrong key refused first)",
       "ok": true,
-      "ms": 328
+      "ms": 314
     },
     {
       "name": "7. Resume upload (PDF) extracts skills",
       "ok": true,
-      "ms": 513
+      "ms": 325
     },
     {
       "name": "8. Pro recommendations: 0-100 score, reasons and an 8-criterion breakdown",
       "ok": true,
-      "ms": 462
+      "ms": 422
     },
     {
       "name": "9. Bookmark from browse and track the application",
       "ok": true,
-      "ms": 1383
+      "ms": 1315
     },
     {
       "name": "10. Listing detail page and per-listing calendar export",
       "ok": true,
-      "ms": 599
+      "ms": 559
     },
     {
       "name": "11. AI assistant answers with citations",
       "ok": true,
-      "ms": 320
+      "ms": 360
     },
     {
       "name": "12. Notifications page loads",
       "ok": true,
-      "ms": 113
+      "ms": 105
     },
     {
       "name": "13. Lister signs up and is blocked until approved",
       "ok": true,
-      "ms": 1336
+      "ms": 1395
     },
     {
       "name": "14. Admin approves the lister; source coverage and integrations dashboards render",
       "ok": true,
-      "ms": 1680
+      "ms": 1685
     },
     {
       "name": "15. Approved lister publishes an event and it appears in browse",
       "ok": true,
-      "ms": 1922
+      "ms": 1965
     },
     {
-      "name": "16. Mobile layout: no horizontal page scroll on browse, for-you and admin coverage",
+      "name": "16. Mobile layout: no horizontal page scroll on browse, login and for-you",
       "ok": true,
-      "ms": 3063
+      "ms": 3115
     }
   ],
   "consoleErrors": [

@@ -231,7 +231,7 @@ async function signIn(page, email, password) {
     await signOut(page);
   });
 
-  await step('16. Mobile layout: no horizontal page scroll on browse, for-you and admin coverage', async () => {
+  await step('16. Mobile layout: no horizontal page scroll on browse, login and for-you', async () => {
     const m = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     m.setDefaultTimeout(10000);
     const mp = await m.newPage();

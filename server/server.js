@@ -22,9 +22,36 @@ function buildApp() {
   app.use('/api/assistant', require('./routes/assistant'));
   app.use('/api/lister', require('./routes/lister'));
   app.use('/api/admin', require('./routes/admin'));
+  if (process.env.SERVE_CLIENT === 'true') serveClient(app);
   app.use(notFound);
   app.use(errorHandler);
   return app;
+}
+
+// Optional single-process deployment: serve the built React app (client/dist) from this server.
+// The API keeps its locked-down CSP; HTML pages get a CSP that allows only this origin, Google Identity Services
+// and the one inline theme script (by hash, so no 'unsafe-inline' for scripts).
+function serveClient(app) {
+  const fs = require('fs');
+  const path = require('path');
+  const crypto = require('crypto');
+  const dist = path.join(__dirname, '..', 'client', 'dist');
+  const indexFile = path.join(dist, 'index.html');
+  if (!fs.existsSync(indexFile)) { console.warn('SERVE_CLIENT=true but client/dist is missing; run `npm run build` in client/'); return; }
+  const html = fs.readFileSync(indexFile, 'utf8');
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' https://accounts.google.com/gsi/client ${hashes.join(' ')}`.trim(),
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
+    "img-src 'self' data: https://*.googleusercontent.com",
+    "connect-src 'self' https://accounts.google.com/gsi/",
+    "frame-src https://accounts.google.com/gsi/",
+    "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
+  ].join('; ');
+  const pageHeaders = (res) => { res.setHeader('Content-Security-Policy', csp); res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups'); };
+  app.use(express.static(dist, { index: false, maxAge: '7d', setHeaders: (res, file) => { if (file.endsWith('.html')) pageHeaders(res); } }));
+  app.get(/^\/(?!api\/).*/, (_req, res) => { pageHeaders(res); res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(html); });
 }
 
 // One-time data fixes for databases created by the previous version of the project.

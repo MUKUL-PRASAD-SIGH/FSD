@@ -1,86 +1,67 @@
 # Implementation status
 
-_Last verified: 2 Nov 2026. Everything below was run, not assumed. "Needs external" items are the only things I could not run end to end, and each one lists exactly where to get what is missing._
+_Last verified: 2 Nov 2026 (takeover). Test evidence: [TEST_REPORT.md](TEST_REPORT.md). Sources: [SOURCE_COVERAGE_REPORT.md](SOURCE_COVERAGE_REPORT.md). Setup: [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md). Brabble comparison: [BRABBLE_PARITY_REPORT.md](BRABBLE_PARITY_REPORT.md)._
 
-## 1. At a glance
+## 1. Fully implemented and verified
+Run in this session with automated tests and/or browser journeys.
 
-| Area | Implemented | Tested | Running now |
-|---|:--:|:--:|:--:|
-| Email + password sign-up / sign-in, password policy, lockout | ✅ | ✅ automated + browser | ✅ |
-| Google sign-in (ID-token verification, account linking) | ✅ | ⚠️ automated with a mocked Google verifier only | ⏸ needs `GOOGLE_CLIENT_ID` |
-| Roles: user / lister / admin, route guards | ✅ | ✅ automated + browser | ✅ |
-| Lister sign-up → admin approval → publish via event template | ✅ | ✅ automated + browser (approval, form render) | ✅ |
-| Notifications (new matches, closing deadlines, approvals) | ✅ in-app | ✅ automated | ✅ |
-| Notification **email** digests / password-reset emails | ✅ code | ⚠️ not sent anywhere | ⏸ needs `SMTP_URL` |
-| Free plan (browse, save, calendar, basic picks, plain-English search) | ✅ | ✅ | ✅ |
-| Pro plan switch by key | ✅ | ✅ automated + browser | ✅ |
-| Pro: resume parsing (TXT, PDF, DOCX) | ✅ | ✅ TXT/PDF automated; DOCX verified by hand once | ✅ |
-| Pro: location-aware 8-criterion rubric | ✅ | ✅ automated (near beats far, same listing otherwise) | ✅ |
-| Pro: RAG pipeline in MongoDB (listing + resume embeddings, retrieval, re-rank) | ✅ | ✅ automated + browser | ✅ (local embeddings) |
-| Pro: assistant answers, extractive mode | ✅ | ✅ automated + browser | ✅ |
-| Pro: assistant answers, **Gemini-generated** mode | ✅ code | ❌ never run | ⏸ needs `GEMINI_API_KEY` |
-| Gemini embeddings provider | ✅ code | ❌ never run | ⏸ needs `GEMINI_API_KEY` |
-| Live listings from 7 platforms, hourly refresh, expiry purge | ✅ | ✅ run live (366 listings) + unit tests | ✅ |
-| Admin console (approvals, users, plans, listings, audit, notifier) | ✅ | ✅ API automated; approvals + stats checked in browser | ✅ |
-| Account deletion / data erasure | ✅ | ✅ | ✅ |
-| Security hardening (see `docs/SECURITY.md`) | ✅ | ✅ 17 controls covered by tests | ✅ |
-| Billing / payments | ❌ not built (key-based activation instead) | — | — |
-| Email verification for password sign-ups | ❌ not built | — | — |
+| Area | Evidence |
+|---|---|
+| Email/password registration and login, password policy + strength meter, bcrypt-12, lockout, generic errors | e2e tests; journey 3 |
+| JWT sessions with revocation (password change, sign out everywhere, admin disable), logout | e2e tests |
+| Forgot/reset flow (hashed single-use 30-minute token); the email is logged in dev without SMTP | e2e tests |
+| Roles user / lister / admin, server-side guards, no self-escalation | e2e tests; journeys 13–15 |
+| Lister sign-up → admin approval → validated event template → publish/edit/unpublish → notifications | e2e tests; journeys 13–15 |
+| Account deletion with re-authentication; last admin protected | e2e tests |
+| Free / Pro plans by activation key; 402 gating | e2e tests; journey 6 |
+| Resume parsing: PDF, DOCX, TXT (magic-byte check, in-memory) → skills, domains, graduation year, signals | `resume-pdf.test.js` (real PDF + DOCX fixtures); journey 7 |
+| Recommender, Free and Pro: hard filters (expired / ineligible / duplicate / saved), eligibility reader, country-aware location, 0–100 deterministic scores, reasons, per-criterion breakdown | `recommender-profiles.test.js` (6 profiles); journeys 5 and 8 |
+| RAG assistant, extractive mode (constraint parsing, MongoDB-stored embeddings, rubric re-rank, citations, prompt-injection resistance) | e2e tests; journey 11 |
+| Browse, search, filters, sort; listing detail page; tracker; per-listing and feed `.ics` with a day-before alarm | e2e tests; journeys 1, 2, 9, 10 |
+| In-app notifications (new matches, closing deadlines, approvals), idempotent | e2e tests; journey 12 |
+| Ingestion pipeline mechanics: retries/backoff, pagination tracking, timezone-aware dates, prizes with currency, validation with reasons, cross-source dedup, stale removal only after complete syncs, failure isolation, sync history | `ingest-pipeline.test.js`, `ingest-db.test.js` |
+| Admin console: source coverage dashboard, integrations check, listers, users, plans, roles, listing moderation, audit log, notifier | e2e tests; journey 14 |
+| Responsive layout (390 px, no horizontal page scroll), dark/light theme, skeleton/empty/error states | journey 16; screenshots |
+| Single-process production serving (`SERVE_CLIENT=true`) with a hash-based CSP for the SPA | e2e test; Chromium check |
+| Security hardening (docs/SECURITY.md), 0 dependency vulnerabilities | e2e tests; `npm audit` |
 
-**Currently running on this machine:** MongoDB (local), API on `http://localhost:5050`, web app on `http://localhost:5173` (Vite dev server). 366 open listings are loaded and embedded. The first admin was created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in your `.env` (the password is only in that file).
+## 2. Implemented but not externally verified
+The code exists and is unit-tested where possible, but has not been run against the real third party.
 
-## 2. Test results
+| Area | What's missing | How to verify |
+|---|---|---|
+| **All 16 source adapters live** | Sandbox blocks every listing host | `cd server && npm run sources:check` on a normal machine; Admin → Sources |
+| Google sign-in | Real OAuth client ID; the flow is tested with a mocked verifier | ENV_SETUP_GUIDE §2, then sign in by hand |
+| Gemini answers (`gemini-2.5-flash`) and embeddings (`gemini-embedding-001`) | API key. Requests reach Google and are rejected only for the invalid test key | `npm run integrations:check gemini_generate gemini_embeddings` |
+| Email (reset links, digests) | SMTP credentials; SMTP is blocked from the sandbox | `SMTP_TEST_TO=you@… npm run integrations:check smtp` |
+| Kaggle and clist adapters | Free API keys | ENV_SETUP_GUIDE §5 |
 
-`cd server && npm test` → **25 tests, 25 pass, 0 fail** (~40 s). `npm audit` on server and client: **0 vulnerabilities**. Client production build: passes.
+## 3. Partially implemented
+| Area | Gap |
+|---|---|
+| HTML/embedded-data adapters (MLH, ETHGlobal, GeeksforGeeks, DoraHacks) | Built with tolerant parsers (microdata, `__NEXT_DATA__`, JSON-LD, generic field names) but never seen a live payload. Expect small selector or field fixes after the first `sources:check -- --record` |
+| Skill extraction | Dictionary of ~50 canonical skills with aliases; no model-based extraction |
+| Semantic similarity | Local hashed bag-of-words by default; Gemini embeddings available but unverified |
+| Notifications | In-app complete; email digest code exists but is unverified; no push |
+| University portals | Covered only through Devfolio, Devpost, MLH and Unstop; no per-university adapters |
+| Accessibility | Labels, focus styles, `aria-*` on toggles, skip link; no formal WCAG/axe audit |
 
-**End-to-end (13)** — real Express app, real MongoDB in a throwaway database `hackelite_e2e_test` (dropped afterwards), real HTTP calls:
-1. Security headers, no `x-powered-by`, CORS allowlist, 413 on oversized body, malformed JSON → 400, no stack traces
-2. Password policy: each rule, `Password123!` rejected, name/email in password rejected
-3. Register, duplicate email, bcrypt-12 hash stored, login, identical error for unknown vs wrong password
-4. Lockout after 5 failures (correct password refused while locked)
-5. NoSQL injection (`{$gt:''}`) and `__proto__` payloads neutralised
-6. Privilege escalation: `role:'admin'`, `plan:'pro'`, `lister.approvalStatus` via sign-up/profile all ignored; admin routes → 403
-7. Google flow with a mocked verifier: 501 when unconfigured, bad token 401, create, repeat sign-in, link to existing email, Google-only account sets password, lister-via-Google needs organisation
-8. Password change and "sign out everywhere" revoke tokens; forgot/reset flow, single-use token
-9. Lister journey: sign-up pending → blocked → admin sees request → approve → invalid template rejected with per-field errors → publish → public → notification delivered to the matching student only, no duplicates on rerun → ownership enforced → unpublish hides it → rejected lister blocked → admin disables user (session killed) → cannot self-disable/demote → audit log has the events
-10. Free vs Pro: gated endpoints return 402; wrong key 403; correct key unlocks; fake PDF rejected by magic bytes; resume parsed; chunks and listing vectors stored in MongoDB but never returned by the API; Pune listing outranks identical Guwahati listing for a Pune student; assistant returns cited answer; prompt-injection text inside a listing is not obeyed; downgrade re-locks
-11. Public listings API, `.ics` feed with day-before alarm, tracker
-12. Account deletion erases data, needs password, last admin protected
-13. Rate limiting returns 429 under credential stuffing
+## 4. Not implemented
+- Payments/billing for Pro (activation keys instead; replace the check in `server/routes/plan.js` with a payment webhook).
+- Email verification for password sign-ups.
+- CAPTCHA / breached-password check.
+- Background worker separation (jobs run in the API process: run one instance).
+- Native mobile app / PWA / push notifications.
 
-**Unit (12)**: skill matching, resume parsing (text + a real generated PDF + error cases), recommender ranking and filtering, ask parser and in-memory filters, ingest helpers, adapter registry.
+## 5. Blocked by unavailable third-party access
+| Blocker | Unblock |
+|---|---|
+| brabble.ai unreachable, so no side-by-side product comparison | Follow the procedure in BRABBLE_PARITY_REPORT.md from a normal browser |
+| Listing sites unreachable, so no live counts | Run `npm run sources:check`, or allow the domains in the cloud environment's network settings |
+| No credentials for Google, Gemini, SMTP, Kaggle, clist | ENV_SETUP_GUIDE.md |
+| Push to GitHub refused (Claude GitHub App has no access to `mukundgaur06/FSD_PROJ`) | Reconnect GitHub / install the app; the commits are on the local branch |
 
-**Browser (Chrome, by hand through the UI):** register page with live strength meter → sign-up lands on For you (Free) → Plan page → activate Pro with the key → assistant answer with citations; admin sign-in → pending lister → Approve → lister sees dashboard, notification badge and the event template.
-
-**Not covered by any test:** real Google, real Gemini, real SMTP, a multi-instance deployment, load/performance beyond a few hundred listings, accessibility audit, cross-browser (only Chrome), mobile layouts beyond CSS review.
-
-## 3. What needs external setup
-
-None of these block running the app; each switches on an extra capability. Put values in the root `.env` (and `client/.env` where noted), restart the API.
-
-| Capability | What you need | Where to get it | How to finish testing |
-|---|---|---|---|
-| **Google sign-in** | An OAuth 2.0 **Web client ID**. Add `http://localhost:5173` under *Authorised JavaScript origins* | [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → Create credentials → OAuth client ID → *Web application* (configure the consent screen first) | Set `GOOGLE_CLIENT_ID=` in `.env` **and** `VITE_GOOGLE_CLIENT_ID=` in `client/.env`; restart both; the grey "not configured" button becomes the real Google button. Sign in with a Google account → new user created; sign in again → same user; register a password account with the same email first → they link |
-| **Gemini answers + embeddings** | API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free tier available) | `GEMINI_API_KEY=...`; optional `EMBEDDINGS_PROVIDER=gemini` (listings re-embed automatically on the next ingest) and `GEMINI_MODEL`. In Assistant, the footer changes from "Built from your top retrieved matches" to "Generated by Gemini…". Check that answers cite `[1]…` that match the listed sources. **The Gemini calls were written against the public REST docs and have never been executed — expect to adjust model names if Google has changed them** |
-| **Email** (reset links, digests) | An SMTP account | Gmail: enable 2-step verification, create an *App password*, use `smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465`. Or Mailtrap / SES / Resend SMTP | Set `SMTP_URL`, `MAIL_FROM`, `APP_URL`. Use *Forgot password* with a real address; tick *email digest* in Profile and run *Run notifier* in Admin |
-| **HTTPS / hosting** | A host (Render, Railway, Fly, a VPS) and TLS | Platform-provided certificates or Let's Encrypt | Set `NODE_ENV=production`, `CLIENT_ORIGIN=https://your-site`, strong `JWT_SECRET`, `PRO_ACTIVATION_KEYS`; set `trust proxy` hop count in `middleware/security.js`; build the client (`npm run build`) and serve `client/dist` |
-| **MongoDB in production** | A managed cluster | [MongoDB Atlas](https://www.mongodb.com/atlas) free tier | Put its URI in `MONGO_URI`; optionally create an Atlas Vector Search index on `listings.embedding` (384 dims for local embeddings, 768 for Gemini) when listings exceed a few thousand |
-| **Payments for Pro** | A payment provider | Razorpay / Stripe | Replace the key check in `server/routes/plan.js` with a verified webhook that sets `plan.tier` |
-
-## 4. Known limitations (read before relying on it)
-
-- Third-party listing endpoints are **unofficial**; any can change. A failing source appears as `failed: …` in the server log and the rest keep working.
-- MLH, ETHGlobal, Hack Club, DoraHacks, Kaggle, Internshala and AtCoder are **not** included (no stable public JSON found).
-- The local embedding model is a hashed bag-of-words with skill canonicalisation: good for topical matching, weaker than a neural model on paraphrase. Switch to Gemini embeddings for better semantics.
-- Skill extraction is dictionary-based (≈ 50 skills in `server/services/skills.js`); users can edit the list.
-- No email verification, CAPTCHA, or breached-password check. JWT is stored in `localStorage`. Details and mitigations in `docs/SECURITY.md`.
-- Ingestion, indexing and notification jobs run inside the API process; run **one** API instance, or move jobs to a worker (see `docs/ARCHITECTURE.md` §7).
-- Existing accounts from the previous project keep working: old `student` roles are migrated to `user` on startup. Their old 6-character passwords still log in, but any password *change* must meet the new policy.
-- Your `JWT_SECRET` was rotated in this work (the previous value was the public default from the old source), so any pre-existing sessions were signed out.
-
-## 5. Re-running the checks yourself
-```bash
-cd server && npm test                       # 25 tests, isolated DB, ~40 s
-cd client && npm run build                  # production build
-cd server && npm audit --omit=dev           # dependency vulnerabilities
-```
+## Known limitations
+- Third-party endpoints are unofficial except Codeforces, Kaggle, clist and Topcoder; any can change. A failing source shows on Admin → Sources and never blocks the others.
+- Prize rupee values for foreign currencies are estimates (`USD_TO_INR`, `EUR_TO_INR`, `GBP_TO_INR`); the original amount is always shown.
+- JWT is stored in `localStorage` (see docs/SECURITY.md for mitigations).

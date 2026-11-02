@@ -20,3 +20,12 @@ test('unsupported and empty files are rejected with a helpful error', async () =
   await assert.rejects(parseResume(Buffer.from('x'), 'cv.exe'), /Unsupported resume format/);
   await assert.rejects(parseResume(Buffer.from('tiny'), 'cv.txt'), /Could not read any text/);
 });
+
+test('a real DOCX is parsed into skills, domain and graduation year', async () => {
+  const docx = fs.readFileSync(path.join(__dirname, 'fixtures', 'resume.docx'));
+  const { parsed } = await parseResume(docx, 'cv.docx');
+  for (const s of ['SQL', 'Pandas', 'Data Analysis', 'Python', 'Docker', 'AWS']) assert.ok(parsed.skills.includes(s), s);
+  assert.equal(parsed.domains[0].name, 'Data Science');
+  assert.equal(parsed.graduationYear, 2026);
+  assert.ok(parsed.experienceKeywords.includes('internship'));
+});
