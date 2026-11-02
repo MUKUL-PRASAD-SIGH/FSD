@@ -4,6 +4,13 @@
 .env.*
 !.env.example
 
+<<<<<<< HEAD
+# Dependencies / build
+node_modules/
+dist/
+*.log
+.vite/
+=======
 # Dependencies
 node_modules/
 **/node_modules/
@@ -31,3 +38,4 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+>>>>>>> 737750fc31c6cba1eb719f1f64c36de82f0a7cd2

@@ -1,0 +1,42 @@
+# Security
+
+Every control below is either covered by an automated test (✅ test) or is configuration/design noted as such. The suite is `server/tests/e2e.test.js`.
+
+## Controls
+
+| Area | Control | Where | Verified |
+|---|---|---|---|
+| **Passwords** | ≥ 10 chars, upper+lower, digit, symbol; blocks common words *with decorations* (`Password123!`, `P@ssw0rd2026!`), sequences, and your own name/email; max 128; **bcrypt cost 12** | `utils/password.js`, `models/User.js` | ✅ test |
+| **Brute force** | 5 failures → 15-min lock (even correct password refused); auth endpoints limited to 30 / 15 min / IP | `routes/auth.js`, `middleware/security.js` | ✅ test (lockout, 429) |
+| **Account enumeration** | identical login error for unknown vs wrong password; dummy bcrypt for unknown emails; `forgot` always answers the same | `routes/auth.js` | ✅ test |
+| **Sessions** | JWT HS256, 7 d, algorithm pinned; carries `tokenVersion` → password change, "sign out everywhere", disable and role change revoke all tokens at once | `middleware/auth.js` | ✅ test |
+| **Authorisation** | server-side `requireRole`, `requirePro`, `requireApprovedLister`; ownership checks on listings; admins can't disable/demote themselves; last admin can't be deleted | `middleware/auth.js`, routes | ✅ test (escalation, ownership, gating) |
+| **Mass assignment** | profile update whitelists fields; `role`, `plan`, `lister.approvalStatus`, `tokenVersion` are never client-writable; sign-up can only choose `user`/`lister` | `routes/me.js`, `routes/auth.js` | ✅ test |
+| **Admin bootstrap** | admin exists only from server env (`ADMIN_EMAIL/PASSWORD`, password-policy checked) | `server.js` | ✅ test |
+| **Google** | server verifies ID token signature/expiry/issuer/audience and `email_verified`; never trusts client-supplied email | `services/google.js` | ✅ test (mocked verifier) ⚠️ not yet run against real Google |
+| **Reset flow** | 256-bit random token, only its SHA-256 stored, 30-min expiry, single use, resets lockout | `routes/auth.js` | ✅ test |
+| **Injection** | `$`-key / dotted-key / `__proto__` stripping on body, query and params; regex input escaped (no ReDoS/regex injection); strict Mongoose schemas | `utils/sanitize.js` | ✅ test |
+| **Transport headers** | helmet (CSP `default-src 'none'`, nosniff, frame-ancestors none, HSTS in prod), `x-powered-by` removed | `middleware/security.js` | ✅ test |
+| **CORS** | allowlist from `CLIENT_ORIGIN`; no wildcard (startup fails in prod if `*`) | `middleware/security.js`, `config/env.js` | ✅ test |
+| **DoS / abuse** | global 300/min, heavy endpoints (resume, assistant) 20/min, 200 KB JSON cap, 5 MB upload cap, 500-char questions | `middleware/security.js`, `routes/*` | ✅ test (413, 429) |
+| **Uploads** | extension allowlist **and** magic-byte check (fake `.pdf` rejected); parsed in memory, never written to disk; filename sanitised | `routes/me.js` | ✅ test |
+| **Secrets** | `.env` git-ignored; startup validates `JWT_SECRET` ≥ 32 chars and rejects the old project's public default; prod requires Pro keys; Pro key compare is constant-time | `config/env.js`, `routes/plan.js` | ✅ test (Pro key) |
+| **Error handling** | no stack traces or internals returned; 5xx logged server-side only | `utils/http.js` | ✅ test |
+| **Audit** | register, login, lockout, Google link, password change/reset, plan changes, lister decisions, listing create/update/delete, user changes, account deletion | `services/audit.js`, `models/AuditLog.js` | ✅ test |
+| **Privacy** | vectors, resume text and hashes never serialised to clients; account deletion removes user, saved items and notifications and unpublishes listings; resume data removable separately | `utils/serialize.js`, `routes/auth.js` | ✅ test |
+| **LLM safety** | assistant answers only from retrieved context; listing text is untrusted; no tools/actions are exposed to the model | `services/rag.js` | ✅ test (injection text in a listing is not followed) |
+
+## Known gaps and residual risks (honest list)
+
+1. **JWT in `localStorage`** is readable by any XSS. Mitigations present: React escapes output, strict CSP on the API, no `dangerouslySetInnerHTML`, external links use `rel="noopener noreferrer"`. For a hardened deployment, move to an httpOnly+SameSite cookie with CSRF tokens and serve the SPA with its own CSP.
+2. **No email verification** for password sign-ups (Google accounts are verified by Google). Anyone can register an address they don't own. Add a verification email once SMTP is configured.
+3. **No CAPTCHA / no breached-password lookup (HIBP).** Rate limiting and lockout reduce but don't eliminate credential stuffing. Lockout can be used to annoy a specific user (account-lockout DoS); the IP limiter is the counterweight.
+4. **Rate limits are per process memory** — use a shared store behind multiple instances. `trust proxy` must be set to your real proxy hop count in production.
+5. **TLS is not terminated by the app.** Run behind HTTPS (reverse proxy / platform). HSTS is enabled only when `NODE_ENV=production`.
+6. **Unofficial third-party endpoints** are fetched server-side (fixed hosts only, no user-supplied URLs → no SSRF surface). They can change or disappear.
+7. **Resume text is stored in MongoDB** (needed for personalisation). Enable disk encryption / Atlas encryption at rest, and restrict database network access.
+8. **Gemini mode** sends retrieved listing text and resume excerpts to Google. Disclose this to users before enabling it.
+9. Dependencies should be audited regularly (`npm audit`) and pinned in CI.
+
+## Reporting
+Open a private issue with reproduction steps. Do not include real user data.
