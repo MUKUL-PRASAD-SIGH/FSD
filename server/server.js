@@ -69,11 +69,11 @@ async function start() {
   if (!config.disableIngest) {
     const { runAll } = require('./services/ingest/run');
     const tick = async () => {
-      try { console.log('ingest:', JSON.stringify(await runAll()), 'after:', JSON.stringify(await afterIngest())); }
+      try { const r = await runAll(); console.log('ingest:', JSON.stringify(r.summary), 'after:', JSON.stringify(await afterIngest())); }
       catch (e) { console.error('ingest error', e.message); }
     };
     setTimeout(tick, 3000);
-    setInterval(tick, 60 * 60 * 1000);
+    setInterval(tick, (Number(process.env.INGEST_INTERVAL_MIN) || 60) * 60 * 1000);
   }
   const shutdown = () => server.close(() => process.exit(0));
   process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);

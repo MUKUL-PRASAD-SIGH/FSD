@@ -19,10 +19,19 @@ test('isOpen rejects past, invalid and non-date deadlines', () => {
 
 test('formatting helpers', () => {
   assert.strictEqual(rupees(150000), '₹1.5 L');
-  assert.strictEqual(rupees(20000000), '₹2.0 Cr');
+  assert.strictEqual(rupees(20000000), '₹2 Cr');
+  assert.strictEqual(rupees(25000000), '₹2.5 Cr');
   assert.strictEqual(stripHtml('<p>Hi&nbsp;<b>there</b></p>'), 'Hi there');
 });
 
 test('contest adapters are registered with unique names', () => {
   assert.deepStrictEqual(contests.map((c) => c.name), ['codeforces', 'codechef', 'leetcode']);
+});
+
+test('every registered source has a unique name and a fetchListings function', () => {
+  const { SOURCES } = require('../services/ingest/run');
+  const names = SOURCES.map((s) => s.name);
+  assert.strictEqual(new Set(names).size, names.length);
+  for (const s of SOURCES) assert.strictEqual(typeof s.fetchListings, 'function', s.name);
+  assert.ok(names.length >= 16);
 });

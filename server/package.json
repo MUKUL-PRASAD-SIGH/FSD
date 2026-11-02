@@ -8,7 +8,8 @@
     "dev": "node --watch server.js",
     "seed": "node utils/seed.js",
     "ingest": "node services/ingest/run.js",
-    "test": "node --test"
+    "test": "node --test --test-concurrency=1",
+    "sources:check": "node scripts/source-check.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
