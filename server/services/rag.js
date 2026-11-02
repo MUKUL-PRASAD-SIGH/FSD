@@ -73,9 +73,9 @@ async function proRecommendations(userId, { limit = 20, excludeIds = new Set() }
   const user = await User.findById(userId).select('+resume.text +resume.chunks');
   const pool = await loadPool();
   const semantic = await semanticMap(user, pool);
-  const out = recommend(user, pool, { limit, excludeIds, tier: 'pro', semantic });
+  const { results: out, excluded } = recommend(user, pool, { limit, excludeIds, tier: 'pro', semantic, withMeta: true });
   for (const r of out) { delete r.listing.embedding; delete r.listing.embeddingModel; }
-  return { user, results: out };
+  return { user, results: out, excluded };
 }
 
 // Retrieval for a free-text question: similarity to the question, re-ranked by the user's rubric score
