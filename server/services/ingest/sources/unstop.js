@@ -3,9 +3,9 @@ const { getJson, stripHtml, rupees } = require('../common');
 
 const BASE = 'https://unstop.com/api/public/opportunity/search-result';
 const KINDS = [
-  { opportunity: 'hackathons', pages: 4 },
-  { opportunity: 'competitions', pages: 5 },
-  { opportunity: 'quizzes', pages: 1 },
+  { opportunity: 'hackathons', pages: 30 },
+  { opportunity: 'competitions', pages: 40 },
+  { opportunity: 'quizzes', pages: 10 },
 ];
 
 function typeOf(kind, d) {

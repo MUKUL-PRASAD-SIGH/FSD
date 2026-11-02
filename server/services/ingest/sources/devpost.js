@@ -17,10 +17,11 @@ function parseEnd(range) {
   return isNaN(d) ? null : d;
 }
 
-async function fetchListings({ pages = 4 } = {}) {
+async function fetchListings({ pages = 30 } = {}) {
   const out = [];
   for (let page = 1; page <= pages; page++) {
     const data = await getJson(`https://devpost.com/api/hackathons?status[]=open&order_by=deadline&page=${page}`);
+    if (!(data.hackathons || []).length) break;
     for (const h of data.hackathons || []) {
       const loc = h.displayed_location?.location || '';
       const online = /online/i.test(loc);
@@ -31,7 +32,6 @@ async function fetchListings({ pages = 4 } = {}) {
         prizeLabel: prize.label, prizeInr: prize.inr, tags: (h.themes || []).map((t) => t.name), registered: h.registrations_count ?? null,
       });
     }
-    if (page >= (data.meta?.total_pages || 1)) break;
   }
   return out;
 }
