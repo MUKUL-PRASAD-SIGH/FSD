@@ -9,7 +9,7 @@ const TYPES = ['', 'HACKATHON', 'CASE STUDY', 'CONTEST', 'COMPETITION', 'DESIGN'
 export default function Home() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
-  const [f, setF] = useState({ q: '', type: '', mode: '', free: false, closing: '', sort: 'deadline' });
+  const [f, setF] = useState({ q: '', type: '', platform: '', mode: '', free: false, closing: '', sort: 'deadline' });
   const [data, setData] = useState({ listings: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState(new Set());
@@ -26,7 +26,7 @@ export default function Home() {
     const t = setTimeout(() => {
       setLoading(true); setError('');
       const p = { limit, sort: f.sort };
-      if (f.q) p.q = f.q; if (f.type) p.type = f.type; if (f.mode) p.mode = f.mode;
+      if (f.q) p.q = f.q; if (f.type) p.type = f.type; if (f.mode) p.mode = f.mode; if (f.platform) p.platform = f.platform;
       if (f.free) p.free = 'true'; if (f.closing) p.closing = f.closing;
       api.listings(p).then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
     }, 200);
@@ -59,7 +59,11 @@ export default function Home() {
         <select value={f.type} onChange={(e) => set('type', e.target.value)} aria-label="Type">
           {TYPES.map((t) => <option key={t} value={t}>{t ? t.toLowerCase() : 'all types'}</option>)}
         </select>
-        <select value={f.mode} onChange={(e) => set('mode', e.target.value)} aria-label="Mode">
+        <select value={f.platform} onChange={(e) => set('platform', e.target.value)} aria-label="Platform">
+          <option value="">all platforms</option>
+          {stats?.platforms.map((p) => <option key={p.name} value={p.name}>{p.name} ({p.count})</option>)}
+        </select>
+        <select value={f.mode}onChange={(e) => set('mode', e.target.value)} aria-label="Mode">
           <option value="">any mode</option><option value="ONLINE">online</option><option value="OFFLINE">in person</option><option value="HYBRID">hybrid</option>
         </select>
         <select value={f.sort} onChange={(e) => set('sort', e.target.value)} aria-label="Sort">
