@@ -1,63 +1,105 @@
 # HackElite
 
-Live hackathons, case competitions and contests, **ranked against your resume**. MongoDB is the only datastore.
+Live hackathons, case competitions and contests from 7 platforms in one place, with **role-based accounts**, **in-app notifications**, and a **Pro plan** that ranks everything against your resume and location using a MongoDB-backed RAG pipeline.
 
-The previous version (3D landing page, admin console, team formation, Gemini chat) is preserved in [`old/`](old/).
+MongoDB is the only datastore. The previous version of the project is preserved in [`old/`](old/).
 
-## What it does
+> Status, test results and what still needs external setup: **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**
+> Architecture and system design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Security: [docs/SECURITY.md](docs/SECURITY.md)
 
-| Feature | How it works |
-|---|---|
-| **Browse** | Light landing page + filterable grid (type, mode, free, closing this week, sort by deadline/prize/popularity). |
-| **Resume parsing** | Upload PDF / DOCX / TXT. Text is extracted in memory (file is not stored), then a dictionary parser finds ~50 skills, scores domains, graduation year, education, links and experience signals. |
-| **For you** | Recommendation engine ranks every open listing against your skills, interests, preferences and resume text, and shows *why* (matched skills, domain fit, urgency, skill gaps). |
-| **Ask** | Plain-English search ("online AI hackathons closing soon with 1L+ prize"). Rule-based parsing → filters → same ranking engine. No external LLM. |
-| **Tracker** | Save listings and move them through saved → applied → shortlisted → won/rejected. |
-| **Calendar + API** | `/api/listings/calendar.ics` (day-before alarms) and a public JSON `/api/listings`. |
-| **Live data** | Hourly ingestion from 7 platforms (table below). Each source is an independent adapter in `server/services/ingest/sources/`, so one site being down never blocks the rest. Expired listings are purged on every run. |
+## Plans
 
-### Sources
-| Platform | What's pulled | Notes |
+| | **Free** | **Pro** |
 |---|---|---|
-| Unstop | hackathons, competitions (incl. case competitions), quizzes | registration deadline, prize pool, skills, eligibility |
-| Devpost | open hackathons | USD prizes converted to ₹ (`USD_TO_INR`) |
-| Devfolio | hackathons with applications open | registration close date |
-| HackerEarth | hackathons and coding challenges | |
-| Codeforces, CodeChef, LeetCode | upcoming contests | deadline = contest start |
+| Browse, filter, sort live listings from 7 platforms | ✅ | ✅ |
+| Save / track applications (Kanban) | ✅ | ✅ |
+| Calendar (.ics) deadline reminders, public JSON API | ✅ | ✅ |
+| In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
+| Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
+| Basic picks from your skills and interests | ✅ | ✅ |
+| Resume upload and parsing | ❌ | ✅ |
+| Location-aware ranking (city, state, travel) + eligibility | ❌ | ✅ |
+| 8-criterion recommendation rubric with explanations | ❌ | ✅ |
+| RAG assistant with cited answers | ❌ | ✅ |
 
-These are the public endpoints each site's own pages use; no API keys are needed. Listings link back to the organiser. Respect each site's terms and keep the hourly interval. Add a platform by writing one adapter that returns `{ externalId, title, url, deadline, … }`.
+### Switching to Pro (no billing yet)
+Pro is activated with a key. Set one or more comma-separated keys in the root `.env`:
 
-`npm run seed` adds 12 offline sample listings; they are removed automatically after the first successful live ingest.
+```
+PRO_ACTIVATION_KEYS=HACKELITE-PRO-DEMO-2026
+```
 
-### Recommendation score (0–100)
-`0.35 skills + 0.20 interests + 0.20 TF-IDF text similarity + 0.15 preference fit + 0.10 urgency`.
-Weights live in `server/services/recommender.js`. Each result returns its `breakdown` and human-readable `reasons`.
+Then sign in → **Upgrade** (or `/plan`) → paste the key → **Activate Pro**. `HACKELITE-PRO-DEMO-2026` is the documented demo key; **change it before deploying** (the server refuses to start in production without keys). Admins can also grant or revoke Pro per user in the Admin console. *Replace the key check in `server/routes/plan.js` with a payment webhook when you add billing.*
 
-## Run it
+## Roles
 
-Requires Node 20+ and a running MongoDB. The repo-root `.env` (git-ignored) supplies `MONGO_URI` and `JWT_SECRET`; see `.env.example`.
+| Role | How you get it | Can do |
+|---|---|---|
+| **user** | Default sign-up | Browse, save, notifications, profile, Free/Pro features |
+| **lister** | Sign up with "I run events" (needs organisation details) | After **admin approval**: publish, edit and delete own events via the event template. Before approval: can sign in but not publish |
+| **admin** | Created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` on server start; can promote others | Approve/reject listers, manage users and plans, unpublish listings, view the audit log, run the notifier |
+
+`admin` can never be self-selected through the API.
+
+## Quick start
+
+Requires **Node 20+** and a running **MongoDB**.
 
 ```bash
-# API (http://localhost:5050)
-cd server && npm install
-npm run seed      # optional sample listings
-npm start         # also pulls live Devpost listings on boot and hourly
+# 1. configure (the .env already in the repo root is git-ignored; see .env.example for every option)
+cp .env.example .env        # then fill JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
 
-# Web (http://localhost:5173, proxies /api to 5050)
+# 2. API  → http://localhost:5050   (pulls live listings on boot, then hourly)
+cd server && npm install && npm start
+
+# 3. Web  → http://localhost:5173   (proxies /api to 5050)
 cd client && npm install && npm run dev
 ```
 
-Tests: `cd server && npm test` (parser, skill matching, recommender, ask parser).
+Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
+The admin password must satisfy the policy (10+ chars, upper/lower, digit, symbol, not a common word).
+`npm run seed` adds 12 offline sample listings (auto-removed after the first live ingest).
+
+### Environment variables
+| Variable | Required | Purpose |
+|---|---|---|
+| `MONGO_URI` | ✅ | MongoDB connection string |
+| `JWT_SECRET` | ✅ | ≥ 32 chars; server warns (dev) or refuses to start (prod) otherwise |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | ✅ first run | Bootstrap the first admin |
+| `PRO_ACTIVATION_KEYS` | for Pro | Comma-separated Pro keys |
+| `API_PORT`, `CLIENT_ORIGIN` | defaults 5050 / `http://localhost:5173` | Port and CORS allowlist |
+| `GOOGLE_CLIENT_ID` + `VITE_GOOGLE_CLIENT_ID` (client/.env) | optional | Enables "Continue with Google" |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `EMBEDDINGS_PROVIDER` | optional | Generated assistant answers / Gemini embeddings (default is a local model, no key) |
+| `SMTP_URL`, `MAIL_FROM`, `APP_URL` | optional | Password-reset and digest emails |
+| `ENABLED_SOURCES`, `DISABLE_INGEST`, `USD_TO_INR` | optional | Ingestion controls |
+
+Where to get the optional keys is listed in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md#what-needs-external-setup).
+
+## How recommendations work
+
+**Free (basic):** `0.45 interests + 0.35 skills + 0.20 urgency`, from the skills and interests you type.
+
+**Pro (rubric, 0–100):** `skills .22 · semantic .18 · interests .12 · location .14 · eligibility .08 · preferences .10 · timing .08 · value .08`.
+- *semantic*: cosine similarity between your profile (+ resume chunks) and listing embeddings.
+- *location*: online = 1; your city = 1; a city you like = .9; your state = .7; open to travel = .45; otherwise .1 (and a score penalty).
+- *eligibility*: your education level vs. the listing's audience. *timing*: enough days left to prepare for that kind of event. *value*: prize size vs. how crowded it is.
+- Every card shows plain-English reasons and an expandable per-criterion breakdown.
+
+**RAG assistant (Pro):** listing text and resume chunks are embedded and stored in MongoDB → your question is parsed for hard constraints (online / closing this week / ₹1L+) → candidates are retrieved by similarity and re-ranked by your rubric → the answer cites its sources. With `GEMINI_API_KEY` the answer is generated from the retrieved context only; without it you get an extractive answer built from the top matches (never invented).
+
+## Sources
+Unstop (hackathons, competitions, case competitions, quizzes) · Devpost · Devfolio · HackerEarth · Codeforces · CodeChef · LeetCode, plus events published by approved listers. Each source is an independent adapter in `server/services/ingest/sources/`. These are unofficial public endpoints; respect each site's terms and keep the hourly interval.
+
+## Tests
+```bash
+cd server && npm test
+```
+25 tests: 13 end-to-end (real MongoDB in an isolated `hackelite_e2e_test` database that is dropped afterwards, real HTTP) and 12 unit/format tests. Your real data is never touched.
 
 ## Layout
 ```
-server/  Express + Mongoose (models, routes, services/{resumeParser,recommender,askParser,ingest})
-client/  React + Vite, no 3D/WebGL (~90 KB gzipped JS)
-old/     previous HackElite AI project
+server/   Express + Mongoose: config, middleware, models, routes, services (recommender, rag, embeddings, notifier, ingest, resumeParser)
+client/   React + Vite (no 3D/WebGL, ~100 KB gzipped JS)
+docs/     ARCHITECTURE.md, SECURITY.md
+old/      previous project
 ```
-
-## Verified vs. not
-- **Verified:** API flows (register, resume upload → parsed profile, recommendations, ask), live Devpost ingestion, unit tests, production build, page renders without console errors.
-- **Not built:** Google sign-in, MLH / ETHGlobal / Hack Club / DoraHacks / Kaggle / Internshala (no stable public JSON endpoint found; they would need HTML scraping or partner access), email/WhatsApp reminders, OpenAPI docs, scanned-image (OCR) resumes.
-- **Fragile by nature:** third-party endpoints are unofficial and can change without notice. A broken source shows as `failed: …` in the ingest log and the others keep working.
-- **Skill extraction is dictionary-based**, so it misses skills not in `server/services/skills.js`; users can edit the list on the Profile page.
