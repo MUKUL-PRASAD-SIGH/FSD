@@ -450,3 +450,47 @@ test('rate limiting throttles credential stuffing', async () => {
   process.env.TEST_RATE_LIMITS = 'off';
   assert.ok(limited > 0, 'login endpoint returned 429 after the threshold');
 });
+
+test('integration self-check reports unconfigured integrations honestly and is admin-only', async () => {
+  const admin = await login('admin-e2e@example.com', 'Adm1n-E2E-Passw0rd!x');
+  const r = await call('GET', '/api/admin/integrations', { token: admin.body.token });
+  assert.equal(r.status, 200);
+  const by = Object.fromEntries(r.body.checks.map((c) => [c.name, c]));
+  assert.equal(by.mongodb.ok, true);
+  assert.equal(by.admin_bootstrap.ok, true);
+  for (const k of ['google_oauth', 'gemini_generate', 'smtp']) { assert.equal(by[k].configured, false, k); assert.equal(by[k].ok, null, k); }
+  assert.ok(!JSON.stringify(r.body).includes('E2E-PRO-KEY-1'), 'never leaks secrets');
+  const u = await register();
+  assert.equal((await call('GET', '/api/admin/integrations', { token: u.body.token })).status, 403);
+});
+
+test('source coverage dashboard API lists every adapter and admin-only manual sync guard', async () => {
+  const admin = await login('admin-e2e@example.com', 'Adm1n-E2E-Passw0rd!x');
+  const r = await call('GET', '/api/admin/sources', { token: admin.body.token });
+  assert.equal(r.status, 200);
+  assert.ok(r.body.sources.length >= 16);
+  assert.ok(r.body.sources.every((s) => 'liveListings' in s && 'lastRun' in s && 'lastSuccessAt' in s));
+  const u = await register();
+  assert.equal((await call('GET', '/api/admin/sources', { token: u.body.token })).status, 403);
+  assert.equal((await call('POST', '/api/admin/ingest/run', { token: u.body.token, body: {} })).status, 403);
+});
+
+test('SERVE_CLIENT mode serves the SPA with a page CSP while the API keeps its strict one', async (t) => {
+  const fs = require('fs');
+  const path = require('path');
+  if (!fs.existsSync(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'))) return t.skip('client not built');
+  process.env.SERVE_CLIENT = 'true';
+  const srv = buildApp().listen(0);
+  const b = `http://127.0.0.1:${srv.address().port}`;
+  try {
+    const page = await fetch(`${b}/for-you`);
+    assert.equal(page.status, 200);
+    const csp = page.headers.get('content-security-policy');
+    assert.match(csp, /script-src 'self' https:\/\/accounts\.google\.com\/gsi\/client 'sha256-/);
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(csp));
+    assert.match(await page.text(), /<div id="root">/);
+    const api = await fetch(`${b}/api/health`);
+    assert.match(api.headers.get('content-security-policy'), /default-src 'none'/);
+    assert.equal((await fetch(`${b}/api/does-not-exist`)).status, 404, 'unknown API routes are not swallowed by the SPA fallback');
+  } finally { delete process.env.SERVE_CLIENT; srv.close(); }
+});

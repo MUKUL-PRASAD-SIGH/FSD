@@ -105,21 +105,23 @@ router.get('/recommendations', asyncRoute(async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit, 10) || 20);
 
   if (req.user.isPro()) {
-    const { user, results } = await rag.proRecommendations(req.user._id, { limit, excludeIds });
+    const { user, results, excluded } = await rag.proRecommendations(req.user._id, { limit, excludeIds });
     return res.json({
       tier: 'pro',
       hasSignal: (user.skills?.length || 0) + (user.interests?.length || 0) + (user.resume?.skills?.length || 0) > 0,
-      basedOn: { skills: user.skills.slice(0, 12), interests: user.interests, resume: !!user.resume?.parsedAt, location: user.location?.city || user.location?.state || null },
+      basedOn: { skills: user.skills.slice(0, 12), interests: user.interests, resume: !!user.resume?.parsedAt, location: user.location?.city || user.location?.state || null, education: user.education?.level || null },
+      excluded,
       recommendations: results.map((r) => ({ ...r, listing: shape(r.listing) })),
     });
   }
   const u = req.user;
   const listings = await Listing.find({ status: 'published', deadline: { $gte: new Date() } }).lean();
-  const recs = recommend(u, listings, { limit, excludeIds, tier: 'free' });
+  const { results: recs, excluded } = recommend(u, listings, { limit, excludeIds, tier: 'free', withMeta: true });
   res.json({
     tier: 'free',
     hasSignal: (u.skills?.length || 0) + (u.interests?.length || 0) > 0,
-    basedOn: { skills: u.skills.slice(0, 12), interests: u.interests, resume: false, location: null },
+    basedOn: { skills: u.skills.slice(0, 12), interests: u.interests, resume: false, location: null, education: u.education?.level || null },
+    excluded,
     upgrade: 'Pro adds resume parsing, location-aware ranking, an 8-point rubric and the AI assistant.',
     recommendations: recs.map((r) => ({ ...r, listing: shape(r.listing) })),
   });

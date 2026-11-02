@@ -13,7 +13,7 @@
   ├─ routes: auth · listings · me · ask · plan · assistant · lister · admin                    │
   ├─ authz middleware: protect → requireRole → requirePro → requireApprovedLister             │
   ├─ services: recommender · rag · embeddings · notifier · resumeParser · audit · mailer      │
-  └─ jobs (in-process, hourly): ingest 7 sources → embed new listings → run notifier          │
+  └─ jobs (in-process, hourly): ingest 16 sources → validate → dedupe → embed new listings → run notifier          │
                     └───────┬──────────────────────────┬──────────────────────┬──────────────┘
                             │                          │                      │
                   ┌─────────▼─────────┐     ┌──────────▼─────────┐   ┌────────▼────────┐
@@ -32,7 +32,8 @@ Everything persistent lives in **MongoDB** — accounts, listings, vectors, noti
 | Collection | Key fields | Indexes |
 |---|---|---|
 | `users` | email (unique), password hash (bcrypt-12, `select:false`), googleId (sparse unique), `role` user/lister/admin, `status`, `plan.tier`, `lister.approvalStatus`, `tokenVersion`, `failedLogins/lockUntil`, profile (skills, interests, location, education, preferences, notify), `resume` (parsed fields, `text` and `chunks[{text, embedding}]` both `select:false`) | email, googleId, role |
-| `listings` | title, organiser, type, mode, city/state/venue, deadline, prize, fee, eligibility, tags, skills, `source`, `externalId`, `status` published/unpublished, `createdBy`, `embedding` (`select:false`), `embeddingModel` | (source, externalId) unique partial; (status, deadline); text index |
+| `listings` | title, organiser, type, mode, city/state/country/venue, deadline + `deadlineKind`, start/end dates, prize (`prizeInr`, `prizeAmount`, `prizeCurrency`), fee, team size, eligibility, tags, skills, `source`, `externalId`, `alsoOn[]`, `inferred[]`, `status` published/unpublished, `createdBy`, `embedding` (`select:false`), `embeddingModel` | (source, externalId) unique partial; (status, deadline); (source, refreshedAt); (status, platform, deadline); text index |
+| `sourcesyncs` | source, runId, status ok/partial/failed/skipped, error, raw/valid/expired/duplicates/rejected/stored/removedStale, rejectReasons, rejectSamples, pages {fetched, expected, complete, capped} | (source, createdAt); TTL 90 days |
 | `saveds` | user, listing, status (saved→applied→shortlisted→won/rejected), note | (user, listing) unique |
 | `notifications` | user, type, listing, title, body, score, readAt | (user, listing, type) unique partial → idempotent; (user, readAt, createdAt) |
 | `auditlogs` | actor, action, target, meta, ip, createdAt | createdAt, action |
@@ -53,14 +54,18 @@ Everything persistent lives in **MongoDB** — accounts, listings, vectors, noti
 
 Two tiers share one module (`services/recommender.js`):
 - **Free**: `0.45·interests + 0.35·skills + 0.20·urgency`.
-- **Pro rubric**: `skills .22, semantic .18, interests .12, location .14, eligibility .08, preferences .10, timing .08, value .08`, with multiplicative penalties for unreachable location (×0.8), ineligible audience (×0.75) and paid events for free-only users (×0.6). Output includes the per-criterion breakdown and reasons so scores are explainable.
+- **Hard filters (both tiers)**: expired, clearly ineligible (education level / graduation batch, `services/eligibility.js`), already saved, duplicate (same normalised title, deadlines within 10 days). Counts are returned as `excluded`.
+- **Pro rubric**: `skills .22, semantic .18, interests .12, location .14, eligibility .08, preferences .10, timing .08, value .08`, with multiplicative penalties for in-person events abroad (×0.5), in-person elsewhere when the user does not travel (×0.75), unverifiable eligibility conditions (×0.9) and paid events for free-only users (×0.6). Output includes `criteria[]` (label, weight, score, points, detail) and reasons. Ordering is deterministic (score, deadline, id).
+
+## 4b. Ingestion pipeline
+`services/ingest/`: `http.js` (timeouts, retry/backoff on network errors, 429 and 5xx, Retry-After, per-host delay, pagination tracking) → adapters in `sources/` return raw records → `validate.js` (keep / expired / reject with a reason) → `dedupe.js` (cross-source merge by canonical URL or title + dates; native source over aggregator; `alsoOn` attribution) → `run.js` upserts primaries, removes merged duplicates (moving users' tracker entries), removes stale listings only after a *complete* paginated sync, and writes one `SourceSync` document per source per run (admin Sources dashboard). Adapters run in parallel with `Promise.allSettled`, so one failure never blocks the rest. Details: [SOURCE_COVERAGE_REPORT.md](../SOURCE_COVERAGE_REPORT.md).
 
 Design choices: deterministic and inspectable (no black-box model), skills extracted by a word-boundary dictionary (so `java` ≠ `javascript`), geography via an in-repo India city/state map (no geocoding API).
 
 ## 5. RAG pipeline (Pro)
 
 1. **Index** – each listing → one document (title, organiser, type, mode, city, tags, skills, eligibility, description) → embedding stored on the listing with its model name. Resume → ≤ 20 overlapping 650-char chunks → embeddings stored on the user.
-2. **Embeddings** – `local-hash-v1` (384-d feature-hashing over words, bigrams and canonical skill tokens; no network, deterministic) or `gemini-text-embedding-004` (768-d) via `EMBEDDINGS_PROVIDER`. Vectors of different models are never compared; a model switch re-indexes lazily.
+2. **Embeddings** – `local-hash-v1` (384-d feature-hashing over words, bigrams and canonical skill tokens; no network, deterministic) or Gemini `gemini-embedding-001` truncated to 768-d via `EMBEDDINGS_PROVIDER`. Vectors of different models are never compared; a model switch re-indexes lazily.
 3. **Retrieve** – parse hard constraints from the question (type, mode, closing window, prize, free) and filter the pool; embed the question; score = 0.65·question-similarity + 0.35·profile-similarity; re-rank with the rubric (0.6 relevance + 0.4 rubric); add the 2 best resume chunks.
 4. **Generate** – grounded prompt with numbered context. Gemini if configured; otherwise an **extractive** answer assembled from the top matches. Listing text is treated as untrusted data (prompt-injection safe by construction in extractive mode; instruction-fenced in Gemini mode). Responses carry citations.
 

@@ -105,8 +105,9 @@ export default function Profile() {
               <div className="parsed">
                 <p className="small">Parsed <strong>{r.fileName}</strong> on {new Date(r.parsedAt).toLocaleDateString()}{r.graduationYear ? ` · graduating ${r.graduationYear}` : ''}{r.indexed ? ` · indexed (${r.indexed})` : ''}</p>
                 <div className="bars" aria-label="Domain strengths">
-                  {r.domains.slice(0, 5).map((d) => <div key={d.name} className="bar"><span>{d.name}</span><i style={{ width: `${Math.round(d.score * 100)}%` }} /><b>{Math.round(d.score * 100)}%</b></div>)}
+                  {r.domains.slice(0, 5).map((d) => <div key={d.name} className="bar"><span>{d.name}</span><i style={{ '--w': `${Math.round(d.score * 100)}%` }} /><b>{Math.round(d.score * 100)}%</b></div>)}
                 </div>
+                {r.skills?.length > 0 && <p className="small"><b>Skills found ({r.skills.length}):</b> <span className="chips inline">{r.skills.map((x) => <span key={x} className="pill">{x}</span>)}</span></p>}
                 {r.experienceKeywords.length > 0 && <p className="muted small">Signals: {r.experienceKeywords.join(', ')}</p>}
               </div>
             )}

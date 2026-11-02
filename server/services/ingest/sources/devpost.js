@@ -1,39 +1,49 @@
-// Devpost's public JSON endpoint (the one its own site uses).
-const { getJson, stripHtml, rupees, usdToInr } = require('../common');
+// Devpost: the public JSON endpoint its own /hackathons page calls.
+// Pagination: meta.total_count / meta.per_page (falls back to "stop on an empty page").
+// Dates: `submission_period_dates` is a human range ("Oct 01 - Nov 12, 2026", "Nov 03 - 15, 2026",
+// "Dec 28, 2026 - Jan 03, 2027"). The previous parser only understood the first form and silently dropped the rest.
+const { getJson, paginate } = require('../http');
+const { parseDateRange, parsePrize } = require('../parse');
 
-function parsePrize(html) {
-  const text = stripHtml(html);
-  const n = Number((text.match(/[\d,]+/) || [''])[0].replace(/,/g, ''));
-  if (!n) return { label: 'See listing', inr: null };
-  const inr = text.includes('$') ? usdToInr(n) : n;
-  return { label: text.includes('$') ? `$${n.toLocaleString('en-US')}` : rupees(n), inr };
+const BASE = process.env.DEVPOST_API_URL || 'https://devpost.com/api/hackathons';
+const TZ = 'America/New_York'; // Devpost shows deadlines in Eastern time
+
+function map(h) {
+  const loc = h.displayed_location?.location || '';
+  const online = /online|virtual/i.test(loc) || h.displayed_location?.icon === 'globe';
+  const { start, end } = parseDateRange(h.submission_period_dates, { tz: TZ });
+  const prize = parsePrize(h.prize_amount, 'USD');
+  const parts = loc.split(',').map((x) => x.trim()).filter(Boolean);
+  return {
+    externalId: h.id,
+    title: h.title,
+    organiser: h.organization_name || '',
+    type: 'HACKATHON',
+    platform: 'Devpost',
+    url: h.url,
+    deadline: end || h.submission_period_dates || null, // unparseable text is kept so validation reports it as such
+    deadlineKind: 'submission',
+    startDate: start,
+    mode: online ? 'ONLINE' : 'OFFLINE',
+    city: online ? '' : parts[0] || '',
+    country: online ? '' : parts.length > 1 ? parts[parts.length - 1] : '',
+    prizeLabel: prize?.label, prizeInr: prize?.inr, prizeAmount: prize?.amount, prizeCurrency: prize?.currency,
+    eligibility: [h.invite_only ? 'Invite only' : '', h.eligibility_requirement_invite_only_description || ''].filter(Boolean),
+    tags: (h.themes || []).map((t) => t.name),
+    registered: h.registrations_count ?? null,
+    description: h.open_state === 'upcoming' ? 'Upcoming: submissions open soon.' : '',
+  };
 }
 
-// "Oct 01 - Nov 12, 2026" -> end of the last day
-function parseEnd(range) {
-  const m = (range || '').match(/([A-Za-z]{3,9})\s+(\d{1,2}),\s*(\d{4})\s*$/);
-  if (!m) return null;
-  const d = new Date(`${m[1]} ${m[2]}, ${m[3]} 23:59:59`);
-  return isNaN(d) ? null : d;
+async function fetchListings({ pages } = {}) {
+  const rows = await paginate(pages, { maxPages: Number(process.env.DEVPOST_MAX_PAGES || 120) }, async (page) => {
+    const data = await getJson(`${BASE}?status[]=open&status[]=upcoming&order_by=deadline&page=${page}`);
+    const items = data.hackathons || [];
+    const total = data.meta?.total_count;
+    const per = data.meta?.per_page || items.length || 9;
+    return { items, totalPages: Number.isFinite(total) ? Math.max(1, Math.ceil(total / per)) : undefined };
+  });
+  return rows.map(map);
 }
 
-async function fetchListings({ pages = 30 } = {}) {
-  const out = [];
-  for (let page = 1; page <= pages; page++) {
-    const data = await getJson(`https://devpost.com/api/hackathons?status[]=open&order_by=deadline&page=${page}`);
-    if (!(data.hackathons || []).length) break;
-    for (const h of data.hackathons || []) {
-      const loc = h.displayed_location?.location || '';
-      const online = /online/i.test(loc);
-      const prize = parsePrize(h.prize_amount);
-      out.push({
-        externalId: h.id, title: h.title, organiser: h.organization_name, type: 'HACKATHON', platform: 'Devpost',
-        url: h.url, deadline: parseEnd(h.submission_period_dates), mode: online ? 'ONLINE' : 'OFFLINE', city: online ? '' : loc,
-        prizeLabel: prize.label, prizeInr: prize.inr, tags: (h.themes || []).map((t) => t.name), registered: h.registrations_count ?? null,
-      });
-    }
-  }
-  return out;
-}
-
-module.exports = { name: 'devpost', fetchListings };
+module.exports = { name: 'devpost', label: 'Devpost', fetchListings, map };

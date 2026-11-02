@@ -34,9 +34,35 @@ const stateOf = (cityOrState) => {
   return String(cityOrState || '').toLowerCase().trim();
 };
 
+const COUNTRY = {
+  india: 'india', in: 'india', bharat: 'india', ind: 'india',
+  usa: 'united states', us: 'united states', 'united states': 'united states', 'united states of america': 'united states', america: 'united states',
+  uk: 'united kingdom', 'united kingdom': 'united kingdom', england: 'united kingdom', 'great britain': 'united kingdom',
+  uae: 'united arab emirates', 'united arab emirates': 'united arab emirates',
+};
+const US_STATES = new Set('al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma mi mn ms mo mt ne nv nh nj nm ny nc nd oh ok or pa ri sc sd tn tx ut vt va wa wv wi wy dc'.split(' '));
+const normCountry = (c) => { const k = String(c || '').toLowerCase().replace(/[^a-z\s]/g, '').trim(); return COUNTRY[k] || k; };
+
+// Best guess of a listing's country: explicit field, a known Indian city, or a US state code (MLH/Devpost).
+function listingCountry(l) {
+  if (l.country) return normCountry(l.country);
+  if (canonicalCity(`${l.city} ${l.venue || ''}`)) return 'india';
+  if (US_STATES.has(String(l.state || '').toLowerCase().trim())) return 'united states';
+  const tail = String(l.city || '').split(',').pop().trim();
+  if (tail && COUNTRY[tail.toLowerCase()]) return COUNTRY[tail.toLowerCase()];
+  return '';
+}
+
 // 1 = no travel needed ... 0 = far away and user does not want to travel
 function locationFit(user, listing) {
   if (listing.mode === 'ONLINE') return { score: 1, note: 'online, no travel' };
+  const uCountry = normCountry(user.location?.country || 'India');
+  const lCountry = listingCountry(listing);
+  if (lCountry && uCountry && lCountry !== uCountry) {
+    const where = listing.city ? `${listing.city}${listing.country ? ', ' + listing.country : ''}` : lCountry;
+    if (listing.mode === 'HYBRID') return { score: 0.6, note: `hybrid; in-person part is in ${where}` };
+    return { score: 0.05, note: `in person in ${where} (another country)` };
+  }
   const uCity = canonicalCity(user.location?.city);
   const uState = stateOf(user.location?.state || user.location?.city);
   const lCity = canonicalCity(`${listing.city} ${listing.venue || ''}`);
@@ -47,8 +73,9 @@ function locationFit(user, listing) {
   if (lCity && prefCities.includes(lCity)) return { score: 0.9, note: `in a city you like (${listing.city || lCity})` };
   if (uState && lState && uState === lState) return { score: 0.7, note: 'in your state' };
   if (!uCity && !uState) return { score: 0.5, note: '' }; // unknown location: neutral
+  if (listing.mode === 'HYBRID') return { score: 0.75, note: 'hybrid, can join online' };
   if (travel) return { score: 0.45, note: 'you are open to travel' };
-  return { score: 0.1, note: '' };
+  return { score: 0.1, note: listing.city ? `in person in ${listing.city}` : 'in person' };
 }
 
-module.exports = { canonicalCity, stateOf, locationFit };
+module.exports = { canonicalCity, stateOf, locationFit, listingCountry, normCountry };

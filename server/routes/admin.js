@@ -8,6 +8,7 @@ const { asyncRoute } = require('../utils/http');
 const { audit } = require('../services/audit');
 const { esc, str } = require('../utils/sanitize');
 const { runNotifier } = require('../services/notifier');
+const SourceSync = require('../models/SourceSync');
 
 router.use(protect, requireRole('admin'));
 
@@ -103,6 +104,61 @@ router.get('/audit', asyncRoute(async (req, res) => {
   const f = typeof req.query.action === 'string' && req.query.action ? { action: new RegExp(`^${esc(req.query.action.slice(0, 40))}`) } : {};
   const rows = await AuditLog.find(f).sort({ createdAt: -1 }).limit(100).populate('actor', 'name email role').lean();
   res.json({ events: rows.map((e) => ({ id: e._id, at: e.createdAt, action: e.action, actor: e.actor ? { name: e.actor.name, email: e.actor.email, role: e.actor.role } : null, target: e.target, meta: e.meta, ip: e.ip })) });
+}));
+
+// ---- Source coverage dashboard ----------------------------------------------------------
+// Latest sync per source + the last successful sync time + live listing counts per source.
+router.get('/sources', asyncRoute(async (_req, res) => {
+  const { SOURCES } = require('../services/ingest/run');
+  const now = new Date();
+  const [latest, lastOk, live] = await Promise.all([
+    SourceSync.aggregate([{ $sort: { createdAt: -1 } }, { $group: { _id: '$source', doc: { $first: '$$ROOT' } } }]),
+    SourceSync.aggregate([{ $match: { status: { $in: ['ok', 'partial'] } } }, { $group: { _id: '$source', at: { $max: '$finishedAt' } } }]),
+    Listing.aggregate([{ $match: { status: 'published', deadline: { $gte: now } } }, { $group: { _id: '$source', n: { $sum: 1 } } }]),
+  ]);
+  const L = Object.fromEntries(latest.map((x) => [x._id, x.doc]));
+  const ok = Object.fromEntries(lastOk.map((x) => [x._id, x.at]));
+  const n = Object.fromEntries(live.map((x) => [x._id, x.n]));
+  const rows = SOURCES.map((s) => {
+    const d = L[s.name];
+    return {
+      source: s.name, label: s.label || s.name, liveListings: n[s.name] || 0, lastSuccessAt: ok[s.name] || null,
+      lastRun: d ? {
+        at: d.finishedAt, status: d.status, error: d.error, skippedReason: d.skippedReason, durationMs: d.durationMs,
+        raw: d.raw, valid: d.valid, expired: d.expired, duplicates: d.duplicates, rejected: d.rejected, stored: d.stored, removedStale: d.removedStale,
+        rejectReasons: d.rejectReasons || {}, rejectSamples: d.rejectSamples || [], pages: d.pages || null,
+      } : null,
+    };
+  });
+  const ingested = SOURCES.reduce((sum, s) => sum + (n[s.name] || 0), 0);
+  res.json({ sources: rows, manualListings: n.manual || 0, sampleListings: n.seed || 0, totalLive: ingested });
+}));
+
+router.get('/sources/:source/history', asyncRoute(async (req, res) => {
+  const rows = await SourceSync.find({ source: str(req.params.source, 30) }).sort({ createdAt: -1 }).limit(30).lean();
+  res.json({ runs: rows.map((d) => ({ at: d.finishedAt, status: d.status, error: d.error, raw: d.raw, valid: d.valid, expired: d.expired, duplicates: d.duplicates, rejected: d.rejected, stored: d.stored, pages: d.pages })) });
+}));
+
+// Manual sync. One at a time; the scheduled hourly run uses the same code path.
+let syncing = null;
+router.post('/ingest/run', asyncRoute(async (req, res) => {
+  if (syncing) return res.status(409).json({ error: 'A sync is already running' });
+  const { runAll } = require('../services/ingest/run');
+  const only = Array.isArray(req.body?.sources) ? req.body.sources.map((x) => str(String(x), 30)).filter(Boolean) : [];
+  syncing = runAll(only.length ? { only } : {});
+  try {
+    const r = await syncing;
+    audit(req, 'admin.ingest_run', { meta: { sources: only, totals: r.totals } });
+    const { afterIngest } = require('../server');
+    afterIngest().catch(() => {});
+    res.json({ runId: r.runId, summary: r.summary, totals: r.totals });
+  } finally { syncing = null; }
+}));
+
+// Real request to each configured integration (Gemini, SMTP, Google, Kaggle, clist, MongoDB). Admin only.
+router.get('/integrations', asyncRoute(async (_req, res) => {
+  const { checkAll } = require('../services/integrations');
+  res.json({ checks: await checkAll() });
 }));
 
 router.post('/notifier/run', asyncRoute(async (_req, res) => res.json({ created: await runNotifier() })));
