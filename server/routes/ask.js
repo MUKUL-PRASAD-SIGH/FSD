@@ -13,7 +13,7 @@ router.post('/', optionalAuth, asyncRoute(async (req, res) => {
   const question = String(req.body?.question || '').trim();
   if (question.length < 3) return res.status(400).json({ error: 'Ask a question of at least a few words' });
   const parsed = parseAsk(question);
-  const listings = await Listing.find(parsed.filter).lean();
+  const listings = await Listing.find({ ...parsed.filter, status: 'published' }).lean();
 
   // Treat the question itself as a temporary profile, blended with the real profile when signed in
   const base = req.user ? await User.findById(req.user._id).select('+resume.text') : null;
@@ -25,10 +25,12 @@ router.post('/', optionalAuth, asyncRoute(async (req, res) => {
     preferences: base?.preferences || {},
     college: base?.college,
   };
-  const ranked = recommend(pseudo, listings, { limit: 12 });
+  const ranked = recommend(pseudo, listings, { limit: 12, tier: 'free' });
   res.json({
     understood: parsed.applied,
     personalised: !!req.user,
+    pro: !!req.user?.isPro(),
+    hint: req.user?.isPro() ? undefined : 'Pro adds a conversational assistant with cited answers, using your resume and location.',
     total: listings.length,
     results: ranked.map((r) => ({ ...r, listing: shape(r.listing) })),
   });
