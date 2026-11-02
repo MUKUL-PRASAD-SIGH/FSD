@@ -14,7 +14,20 @@ The previous version (3D landing page, admin console, team formation, Gemini cha
 | **Ask** | Plain-English search ("online AI hackathons closing soon with 1L+ prize"). Rule-based parsing → filters → same ranking engine. No external LLM. |
 | **Tracker** | Save listings and move them through saved → applied → shortlisted → won/rejected. |
 | **Calendar + API** | `/api/listings/calendar.ics` (day-before alarms) and a public JSON `/api/listings`. |
-| **Live data** | Hourly ingestion of open hackathons from Devpost's public endpoint; `npm run seed` adds 12 clearly-labelled sample listings. |
+| **Live data** | Hourly ingestion from 7 platforms (table below). Each source is an independent adapter in `server/services/ingest/sources/`, so one site being down never blocks the rest. Expired listings are purged on every run. |
+
+### Sources
+| Platform | What's pulled | Notes |
+|---|---|---|
+| Unstop | hackathons, competitions (incl. case competitions), quizzes | registration deadline, prize pool, skills, eligibility |
+| Devpost | open hackathons | USD prizes converted to ₹ (`USD_TO_INR`) |
+| Devfolio | hackathons with applications open | registration close date |
+| HackerEarth | hackathons and coding challenges | |
+| Codeforces, CodeChef, LeetCode | upcoming contests | deadline = contest start |
+
+These are the public endpoints each site's own pages use; no API keys are needed. Listings link back to the organiser. Respect each site's terms and keep the hourly interval. Add a platform by writing one adapter that returns `{ externalId, title, url, deadline, … }`.
+
+`npm run seed` adds 12 offline sample listings; they are removed automatically after the first successful live ingest.
 
 ### Recommendation score (0–100)
 `0.35 skills + 0.20 interests + 0.20 TF-IDF text similarity + 0.15 preference fit + 0.10 urgency`.
@@ -45,5 +58,6 @@ old/     previous HackElite AI project
 
 ## Verified vs. not
 - **Verified:** API flows (register, resume upload → parsed profile, recommendations, ask), live Devpost ingestion, unit tests, production build, page renders without console errors.
-- **Not built:** Google sign-in, listings from the other ~20 platforms Brabble covers (only Devpost is live; others need per-site integrations), email/WhatsApp reminders, OpenAPI docs, scanned-image (OCR) resumes.
+- **Not built:** Google sign-in, MLH / ETHGlobal / Hack Club / DoraHacks / Kaggle / Internshala (no stable public JSON endpoint found; they would need HTML scraping or partner access), email/WhatsApp reminders, OpenAPI docs, scanned-image (OCR) resumes.
+- **Fragile by nature:** third-party endpoints are unofficial and can change without notice. A broken source shows as `failed: …` in the ingest log and the others keep working.
 - **Skill extraction is dictionary-based**, so it misses skills not in `server/services/skills.js`; users can edit the list on the Profile page.
