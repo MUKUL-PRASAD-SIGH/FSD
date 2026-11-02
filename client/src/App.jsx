@@ -1,42 +1,25 @@
 import { useState } from 'react';
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
+import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Home from './pages/Home.jsx';
 import ForYou from './pages/ForYou.jsx';
 import Profile from './pages/Profile.jsx';
 import Tracker from './pages/Tracker.jsx';
 import Ask from './pages/Ask.jsx';
+import Assistant from './pages/Assistant.jsx';
+import Plan from './pages/Plan.jsx';
+import Lister from './pages/Lister.jsx';
+import Admin from './pages/Admin.jsx';
+import Notifications, { Bell, useNotifications } from './pages/Notifications.jsx';
+import { Login, Register, Forgot, Reset } from './pages/Auth.jsx';
 
-function AuthModal() {
-  const { authOpen, closeAuth, login, register } = useAuth();
-  const [mode, setMode] = useState('login');
-  const [f, setF] = useState({ name: '', email: '', password: '' });
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
-  if (!authOpen) return null;
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  async function submit(e) {
-    e.preventDefault();
-    setErr(''); setBusy(true);
-    try { mode === 'login' ? await login({ email: f.email, password: f.password }) : await register(f); }
-    catch (x) { setErr(x.message); } finally { setBusy(false); }
-  }
-  return (
-    <div className="overlay" onClick={closeAuth}>
-      <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
-        <p className="muted small">Browsing is open to everyone. An account lets you save listings and get picks based on your resume.</p>
-        {mode === 'register' && <label>Name<input required value={f.name} onChange={set('name')} autoComplete="name" /></label>}
-        <label>Email<input required type="email" value={f.email} onChange={set('email')} autoComplete="email" /></label>
-        <label>Password<input required type="password" minLength={6} value={f.password} onChange={set('password')} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
-        {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn primary" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Sign up'}</button>
-        <button type="button" className="link" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}>
-          {mode === 'login' ? 'New here? Create an account' : 'Have an account? Sign in'}
-        </button>
-      </form>
-    </div>
-  );
+// Route guards. The server enforces every one of these again; this is only for a sensible UX.
+function Guard({ roles, children }) {
+  const { user } = useAuth();
+  const loc = useLocation();
+  if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
 }
 
 function Theme() {
@@ -50,46 +33,68 @@ function Theme() {
 }
 
 export default function App() {
-  const { user, ready, openAuth, logout } = useAuth();
+  const { user, ready, logout, isPro } = useAuth();
+  const [notes, reloadNotes] = useNotifications(!!user);
   const link = ({ isActive }) => (isActive ? 'active' : '');
+  const g = (roles, el) => <Guard roles={roles}>{el}</Guard>;
+
   return (
     <>
+      <a className="skip" href="#main">Skip to content</a>
       <header className="top">
         <NavLink to="/" className="brand">HACKELITE<span>.ai</span></NavLink>
-        <nav>
+        <nav aria-label="Main">
           <NavLink to="/" end className={link}>Browse</NavLink>
-          <NavLink to="/for-you" className={link}>For you</NavLink>
+          {user?.role !== 'admin' && user?.role !== 'lister' && <NavLink to="/for-you" className={link}>For you</NavLink>}
           <NavLink to="/ask" className={link}>Ask</NavLink>
-          <NavLink to="/tracker" className={link}>Tracker</NavLink>
+          {user && <NavLink to="/assistant" className={link}>Assistant{!isPro && <span className="pill tiny">Pro</span>}</NavLink>}
+          {user && <NavLink to="/tracker" className={link}>Tracker</NavLink>}
+          {user?.role === 'lister' && <NavLink to="/lister" className={link}>My events</NavLink>}
+          {user?.role === 'admin' && <NavLink to="/admin" className={link}>Admin</NavLink>}
         </nav>
         <div className="top-right">
           <Theme />
           {user ? (
             <>
+              <Bell data={notes} reload={reloadNotes} />
+              <NavLink to="/plan" className="btn ghost">{isPro ? 'Pro' : 'Upgrade'}</NavLink>
               <NavLink to="/profile" className="btn ghost">{user.name.split(' ')[0]}</NavLink>
               <button className="btn ghost" onClick={logout}>Sign out</button>
             </>
-          ) : <button className="btn primary" onClick={openAuth}>Sign in</button>}
+          ) : (
+            <>
+              <NavLink to="/login" className="btn ghost">Sign in</NavLink>
+              <NavLink to="/register" className="btn primary">Sign up</NavLink>
+            </>
+          )}
         </div>
       </header>
-      <main>
+      <main id="main">
         {ready && (
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/for-you" element={<ForYou />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot" element={<Forgot />} />
+            <Route path="/reset" element={<Reset />} />
             <Route path="/ask" element={<Ask />} />
-            <Route path="/tracker" element={<Tracker />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/for-you" element={g(null, <ForYou />)} />
+            <Route path="/assistant" element={g(null, <Assistant />)} />
+            <Route path="/tracker" element={g(null, <Tracker />)} />
+            <Route path="/notifications" element={g(null, <Notifications />)} />
+            <Route path="/plan" element={g(null, <Plan />)} />
+            <Route path="/profile" element={g(null, <Profile />)} />
+            <Route path="/lister" element={g(['lister', 'admin'], <Lister />)} />
+            <Route path="/admin" element={g(['admin'], <Admin />)} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}
       </main>
       <footer className="foot">
-        <span>HackElite — a student project. Listings link to the organiser, where you register.</span>
+        <span>HackElite — listings link to the organiser, where you register.</span>
         <a href="/api/listings/calendar.ics">Subscribe to deadlines (.ics)</a>
         <a href="/api/listings">JSON API</a>
       </footer>
-      <AuthModal />
     </>
   );
 }

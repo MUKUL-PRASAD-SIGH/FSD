@@ -6,13 +6,12 @@ import { Empty, closes } from '../components.jsx';
 const STAGES = ['saved', 'applied', 'shortlisted', 'won', 'rejected'];
 
 export default function Tracker() {
-  const { user, openAuth } = useAuth();
+  const { user } = useAuth();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => { if (user) api.saved().then((r) => setRows(r.saved)).catch((e) => setError(e.message)); }, [user]);
 
-  if (!user) return <Empty><p>Sign in to save listings and track your applications.</p><button className="btn primary" onClick={openAuth}>Sign in</button></Empty>;
   if (error) return <p className="error">{error}</p>;
   if (!rows) return <p className="muted">Loading…</p>;
 

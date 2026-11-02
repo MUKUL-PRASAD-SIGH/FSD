@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { api, getToken, setToken } from './api.js';
+import { api, getToken, setToken, setUnauthorizedHandler } from './api.js';
 
 const Ctx = createContext(null);
 export const useAuth = () => useContext(Ctx);
@@ -7,19 +7,28 @@ export const useAuth = () => useContext(Ctx);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(!getToken());
-  const [authOpen, setAuthOpen] = useState(false);
+  const [cfg, setCfg] = useState({ googleClientId: null, passwordMinLength: 10 });
+
+  const signOut = useCallback(() => { setToken(null); setUser(null); }, []);
 
   useEffect(() => {
+    setUnauthorizedHandler(signOut);
+    api.config().then(setCfg).catch(() => {});
     if (!getToken()) return;
     api.me().then((r) => setUser(r.user)).catch(() => setToken(null)).finally(() => setReady(true));
-  }, []);
+  }, [signOut]);
 
-  const finish = useCallback((r) => { setToken(r.token); setUser(r.user); setAuthOpen(false); }, []);
+  const finish = useCallback((r) => { setToken(r.token); setUser(r.user); return r; }, []);
+  const refresh = useCallback(() => api.me().then((r) => setUser(r.user)), []);
+
   const value = {
-    user, ready, setUser, authOpen, openAuth: () => setAuthOpen(true), closeAuth: () => setAuthOpen(false),
+    user, ready, cfg, setUser, refresh,
+    isPro: user?.plan?.tier === 'pro' || user?.role === 'admin',
     login: async (b) => finish(await api.login(b)),
     register: async (b) => finish(await api.register(b)),
-    logout: () => { setToken(null); setUser(null); },
+    google: async (b) => finish(await api.google(b)),
+    adopt: finish,
+    logout: signOut,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
