@@ -37,6 +37,7 @@ export const api = {
   me: () => request('/auth/me'),
 
   stats: () => request('/listings/stats', { auth: false }),
+  listing: (id) => request(`/listings/${id}`),
   listings: (params) => request(`/listings?${new URLSearchParams(params)}`, { auth: false }),
   ask: (question) => j('POST', '/ask', { question }),
 
@@ -72,4 +73,8 @@ export const api = {
   patchListing: (id, status) => j('PATCH', `/admin/listings/${id}`, { status }),
   adminAudit: () => request('/admin/audit'),
   runNotifier: () => j('POST', '/admin/notifier/run'),
+  adminSources: () => request('/admin/sources'),
+  adminSourceHistory: (s) => request(`/admin/sources/${encodeURIComponent(s)}/history`),
+  runIngest: (sources) => j('POST', '/admin/ingest/run', { sources }),
+  adminIntegrations: () => request('/admin/integrations'),
 };

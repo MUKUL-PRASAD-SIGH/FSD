@@ -130,8 +130,8 @@ router.get('/sources', asyncRoute(async (_req, res) => {
       } : null,
     };
   });
-  const manual = await Listing.countDocuments({ source: 'manual', status: 'published', deadline: { $gte: now } });
-  res.json({ sources: rows, manualListings: manual, totalLive: Object.values(n).reduce((a, b) => a + b, 0) });
+  const ingested = SOURCES.reduce((sum, s) => sum + (n[s.name] || 0), 0);
+  res.json({ sources: rows, manualListings: n.manual || 0, sampleListings: n.seed || 0, totalLive: ingested });
 }));
 
 router.get('/sources/:source/history', asyncRoute(async (req, res) => {

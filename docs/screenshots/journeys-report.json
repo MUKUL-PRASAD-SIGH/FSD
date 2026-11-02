@@ -1,0 +1,91 @@
+{
+  "base": "http://localhost:5173",
+  "at": "2026-11-02T16:59:44.225Z",
+  "passed": 16,
+  "failed": 0,
+  "results": [
+    {
+      "name": "1. Landing / browse renders listings, stats and filters",
+      "ok": true,
+      "ms": 615
+    },
+    {
+      "name": "2. Search and filters narrow the list",
+      "ok": true,
+      "ms": 406
+    },
+    {
+      "name": "3. Registration enforces the password policy, then creates a student account",
+      "ok": true,
+      "ms": 1874
+    },
+    {
+      "name": "4. Profile: skills, interests, education and location are saved",
+      "ok": true,
+      "ms": 459
+    },
+    {
+      "name": "5. Free plan: basic recommendations with reasons, resume upload is gated",
+      "ok": true,
+      "ms": 396
+    },
+    {
+      "name": "6. Pro activation with a key (wrong key refused first)",
+      "ok": true,
+      "ms": 328
+    },
+    {
+      "name": "7. Resume upload (PDF) extracts skills",
+      "ok": true,
+      "ms": 513
+    },
+    {
+      "name": "8. Pro recommendations: 0-100 score, reasons and an 8-criterion breakdown",
+      "ok": true,
+      "ms": 462
+    },
+    {
+      "name": "9. Bookmark from browse and track the application",
+      "ok": true,
+      "ms": 1383
+    },
+    {
+      "name": "10. Listing detail page and per-listing calendar export",
+      "ok": true,
+      "ms": 599
+    },
+    {
+      "name": "11. AI assistant answers with citations",
+      "ok": true,
+      "ms": 320
+    },
+    {
+      "name": "12. Notifications page loads",
+      "ok": true,
+      "ms": 113
+    },
+    {
+      "name": "13. Lister signs up and is blocked until approved",
+      "ok": true,
+      "ms": 1336
+    },
+    {
+      "name": "14. Admin approves the lister; source coverage and integrations dashboards render",
+      "ok": true,
+      "ms": 1680
+    },
+    {
+      "name": "15. Approved lister publishes an event and it appears in browse",
+      "ok": true,
+      "ms": 1922
+    },
+    {
+      "name": "16. Mobile layout: no horizontal page scroll on browse, for-you and admin coverage",
+      "ok": true,
+      "ms": 3063
+    }
+  ],
+  "consoleErrors": [
+    "http://localhost:5173/plan :: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+  ]
+}

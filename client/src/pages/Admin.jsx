@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 
 function Stats({ tick }) {
@@ -86,6 +86,82 @@ function Listings() {
   );
 }
 
+const ago = (d) => { if (!d) return 'never'; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+const STATUS_TONE = { ok: 'okp', partial: 'warm', failed: 'hot', skipped: '' };
+
+// Source coverage: one row per adapter with the numbers from its latest sync
+function Sources() {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [openRow, setOpenRow] = useState('');
+  const load = useCallback(() => api.adminSources().then(setData).catch((e) => setMsg(e.message)), []);
+  useEffect(() => { load(); }, [load]);
+  async function sync(sources) {
+    setBusy(true); setMsg('Syncing… this can take a few minutes for every source.');
+    try { const r = await api.runIngest(sources); setMsg(`Sync finished: ${r.totals.stored} distinct listings, ${r.totals.duplicates} cross-source duplicates merged.`); load(); }
+    catch (e) { setMsg(e.message); } finally { setBusy(false); }
+  }
+  if (!data) return <p className="muted">{msg || 'Loading source coverage…'}</p>;
+  return (
+    <section>
+      <div className="row-between">
+        <p className="muted small">{data.totalLive} open listings from ingestion · {data.manualListings} from verified listers{data.sampleListings ? ` · ${data.sampleListings} offline sample listings (removed after the first successful sync)` : ''}</p>
+        <button className="btn primary" disabled={busy} onClick={() => sync([])}>{busy ? 'Syncing…' : 'Sync all now'}</button>
+      </div>
+      {msg && <p className="small" role="status">{msg}</p>}
+      <div className="tbl-wrap">
+        <table className="tbl cov">
+          <thead><tr><th>Source</th><th>Status</th><th>Last success</th><th title="Open listings currently stored">Live</th><th title="Records the source returned">Raw</th><th>Valid</th><th>Expired</th><th title="Repeats in the feed + same opportunity on another source">Dup.</th><th>Rejected</th><th>Pages</th><th /></tr></thead>
+          <tbody>{data.sources.map((s) => {
+            const r = s.lastRun;
+            return (
+              <Fragment key={s.source}>
+                <tr>
+                  <td><b>{s.label}</b><div className="small muted mono">{s.source}</div></td>
+                  <td>{r ? <span className={`pill ${STATUS_TONE[r.status]}`}>{r.status}</span> : <span className="pill">never run</span>}</td>
+                  <td className="small">{ago(s.lastSuccessAt)}</td>
+                  <td className="num"><b>{s.liveListings}</b></td>
+                  <td className="num">{r?.raw ?? '—'}</td><td className="num">{r?.valid ?? '—'}</td><td className="num">{r?.expired ?? '—'}</td>
+                  <td className="num">{r?.duplicates ?? '—'}</td><td className="num">{r?.rejected ?? '—'}</td>
+                  <td className="small">{r?.pages ? `${r.pages.fetched}${r.pages.expected != null ? '/' + r.pages.expected : ''} ${r.pages.complete ? '✓ complete' : r.pages.capped ? '⚠ capped' : '⚠ incomplete'}` : '—'}</td>
+                  <td><button className="link small" onClick={() => setOpenRow(openRow === s.source ? '' : s.source)} aria-expanded={openRow === s.source}>details</button> <button className="link small" disabled={busy} onClick={() => sync([s.source])}>sync</button></td>
+                </tr>
+                {openRow === s.source && (
+                  <tr className="cov-detail"><td colSpan={11}>
+                    {r?.error && <p className="error small">Error: {r.error}</p>}
+                    {r?.skippedReason && <p className="small">Skipped: {r.skippedReason}. Add the credentials in .env and restart.</p>}
+                    {r && Object.keys(r.rejectReasons || {}).length > 0 && <p className="small">Rejected because: {Object.entries(r.rejectReasons).map(([k, v]) => `${k.replace(/_/g, ' ')} (${v})`).join(', ')}</p>}
+                    {r?.rejectSamples?.length > 0 && <ul className="small muted">{r.rejectSamples.map((x, i) => <li key={i}>{x.reason}: {x.title || '(no title)'} <span className="mono">{x.externalId}</span></li>)}</ul>}
+                    {r && <p className="small muted">Stored as primary: {r.stored} · removed as no longer listed: {r.removedStale} · took {Math.round((r.durationMs || 0) / 1000)} s</p>}
+                    {!r && <p className="small muted">This source has not been synced yet.</p>}
+                  </td></tr>
+                )}
+              </Fragment>
+            );
+          })}</tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Integrations() {
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const run = () => { setBusy(true); api.adminIntegrations().then((r) => setRows(r.checks)).finally(() => setBusy(false)); };
+  useEffect(run, []);
+  return (
+    <section>
+      <div className="row-between"><p className="muted small">Each check makes a real request with the configured credentials.</p><button className="btn ghost" disabled={busy} onClick={run}>{busy ? 'Checking…' : 'Re-check'}</button></div>
+      {!rows ? <p className="muted">Checking…</p> : (
+        <table className="tbl"><thead><tr><th>Integration</th><th>Status</th><th>Detail</th></tr></thead>
+          <tbody>{rows.map((c) => <tr key={c.name}><td className="mono">{c.name}</td><td><span className={`pill ${!c.configured ? '' : c.ok ? 'okp' : 'hot'}`}>{!c.configured ? 'not configured' : c.ok ? 'working' : 'failing'}</span></td><td className="small">{c.detail}</td></tr>)}</tbody></table>
+      )}
+    </section>
+  );
+}
+
 function Audit() {
   const [rows, setRows] = useState([]);
   useEffect(() => { api.adminAudit().then((r) => setRows(r.events)); }, []);
@@ -98,10 +174,10 @@ function Audit() {
 }
 
 export default function Admin() {
-  const [tab, setTab] = useState('listers');
+  const [tab, setTab] = useState('sources');
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
-  const tabs = { listers: Listers, users: Users, listings: Listings, audit: Audit };
+  const tabs = { sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
   const Tab = tabs[tab];
   return (
     <>

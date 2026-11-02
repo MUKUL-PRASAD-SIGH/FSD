@@ -10,6 +10,7 @@ import Assistant from './pages/Assistant.jsx';
 import Plan from './pages/Plan.jsx';
 import Lister from './pages/Lister.jsx';
 import Admin from './pages/Admin.jsx';
+import ListingDetail from './pages/ListingDetail.jsx';
 import Notifications, { Bell, useNotifications } from './pages/Notifications.jsx';
 import { Login, Register, Forgot, Reset } from './pages/Auth.jsx';
 
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="/forgot" element={<Forgot />} />
             <Route path="/reset" element={<Reset />} />
             <Route path="/ask" element={<Ask />} />
+            <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/for-you" element={g(null, <ForYou />)} />
             <Route path="/assistant" element={g(null, <Assistant />)} />
             <Route path="/tracker" element={g(null, <Tracker />)} />

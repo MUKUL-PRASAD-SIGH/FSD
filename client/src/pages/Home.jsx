@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { ListingCard, Empty, inr } from '../components.jsx';
+import { ListingCard, Empty, SkeletonGrid, inr } from '../components.jsx';
 
-const TYPES = ['', 'HACKATHON', 'CASE STUDY', 'CONTEST', 'COMPETITION', 'DESIGN', 'INNOVATION'];
+const TYPES = ['', 'HACKATHON', 'CODING', 'COMPETITION', 'CASE STUDY', 'QUIZ', 'DESIGN', 'INNOVATION', 'CONTEST'];
 
 export default function Home() {
   const { user } = useAuth();
@@ -15,6 +15,7 @@ export default function Home() {
   const [savedIds, setSavedIds] = useState(new Set());
   const [limit, setLimit] = useState(24);
   const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => { api.stats().then(setStats).catch(() => {}); }, []);
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function Home() {
       api.listings(p).then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
     }, 200);
     return () => clearTimeout(t);
-  }, [f, limit]);
+  }, [f, limit, retry]);
 
   const set = (k, v) => { setF((o) => ({ ...o, [k]: v })); setLimit(24); };
 
@@ -63,7 +64,7 @@ export default function Home() {
           <option value="">all platforms</option>
           {stats?.platforms.map((p) => <option key={p.name} value={p.name}>{p.name} ({p.count})</option>)}
         </select>
-        <select value={f.mode}onChange={(e) => set('mode', e.target.value)} aria-label="Mode">
+        <select value={f.mode} onChange={(e) => set('mode', e.target.value)} aria-label="Mode">
           <option value="">any mode</option><option value="ONLINE">online</option><option value="OFFLINE">in person</option><option value="HYBRID">hybrid</option>
         </select>
         <select value={f.sort} onChange={(e) => set('sort', e.target.value)} aria-label="Sort">
@@ -73,12 +74,13 @@ export default function Home() {
         <label className="chk"><input type="checkbox" checked={f.closing === 'week'} onChange={(e) => set('closing', e.target.checked ? 'week' : '')} /> closing this week</label>
       </section>
 
-      {error && <p className="error">{error}</p>}
+      {error && <div className="empty"><p className="error">Couldn’t load listings: {error}</p><button className="btn" onClick={() => setRetry((n) => n + 1)}>Try again</button></div>}
       <p className="muted small" aria-live="polite">{loading ? 'Loading…' : `${data.total} listing${data.total === 1 ? '' : 's'}`}</p>
+      {loading && !data.listings.length && <SkeletonGrid />}
       <div className="grid">
         {data.listings.map((l) => <ListingCard key={l.id} item={l} saved={savedIds.has(l.id)} />)}
       </div>
-      {!loading && !data.listings.length && <Empty>Nothing matches those filters. Loosen one and try again.</Empty>}
+      {!loading && !error && !data.listings.length && <Empty>Nothing matches those filters. Loosen one and try again.</Empty>}
       {data.listings.length < data.total && <button className="btn ghost center" onClick={() => setLimit(limit + 24)}>Show more</button>}
     </>
   );
