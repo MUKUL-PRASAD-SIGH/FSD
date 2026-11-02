@@ -8,6 +8,7 @@ const User = require('../models/User');
 const { embed, cosine, activeModel } = require('./embeddings');
 const { recommend, userProfile } = require('./recommender');
 const { config } = require('../config/env');
+const { parseAsk, matchesFilter } = require('./askParser');
 
 const listingDoc = (l) =>
   [l.title, l.organiser, l.type, l.mode, l.city, (l.tags || []).join(', '), (l.skills || []).join(', '), (l.eligibility || []).join(', '), (l.description || '').slice(0, 500)]
@@ -79,7 +80,13 @@ async function proRecommendations(userId, { limit = 20, excludeIds = new Set() }
 
 // Retrieval for a free-text question: similarity to the question, re-ranked by the user's rubric score
 async function retrieve(user, question, { k = 6 } = {}) {
-  const pool = await loadPool();
+  const all = await loadPool();
+  // Hard constraints stated in the question ("online", "closing this week", "1L+ prize") narrow the pool first;
+  // if that leaves almost nothing we fall back to the full pool rather than answer from nothing.
+  const parsed = parseAsk(question);
+  const narrowed = all.filter((l) => matchesFilter(l, parsed.filter));
+  const pool = narrowed.length >= 3 ? narrowed : all;
+  const constraints = narrowed.length >= 3 ? parsed.applied : [];
   const { model, vectors } = await embed([question]);
   const q = vectors[0];
   const profileSem = await semanticMap(user, pool);
@@ -99,7 +106,7 @@ async function retrieve(user, question, { k = 6 } = {}) {
 
   const chunks = (user.resume?.chunks || []).filter((c) => c.embedding?.length === q.length);
   const resumeHits = chunks.map((c) => ({ text: c.text, sim: cosine(q, c.embedding) })).sort((a, b) => b.sim - a.sim).slice(0, 2).filter((c) => c.sim > 0.05);
-  return { top, resumeHits };
+  return { top, resumeHits, constraints };
 }
 
 const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').slice(0, n);
@@ -107,7 +114,7 @@ const when = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', mo
 
 function extractiveAnswer(question, top) {
   if (!top.length) return 'I could not find open listings that fit that. Try fewer constraints, or ask about a domain, city or prize range.';
-  const lines = top.slice(0, 4).map((r, i) => `[${i + 1}] ${r.listing.title} (${r.listing.platform}, ${r.listing.mode.toLowerCase()}${r.listing.city ? ' · ' + r.listing.city : ''}, closes ${when(r.listing.deadline)}) — ${r.reasons.slice(0, 2).join('; ') || 'relevant to your question'}.`);
+  const lines = top.slice(0, 4).map((r, i) => `[${i + 1}] ${r.listing.title} (${r.listing.platform}, ${r.listing.mode.toLowerCase()}${r.listing.city ? ' · ' + r.listing.city : ''}, closes ${when(r.listing.deadline)}) — ${r.score}% match${r.reasons.length ? ': ' + r.reasons.slice(0, 2).join('; ') : ''}.`);
   return `Here are the best matches for “${clip(question, 120)}” based on your profile:\n${lines.join('\n')}`;
 }
 
@@ -131,7 +138,7 @@ async function geminiAnswer(question, top, resumeHits, history) {
 }
 
 async function answer(user, question, history = []) {
-  const { top, resumeHits } = await retrieve(user, question);
+  const { top, resumeHits, constraints } = await retrieve(user, question);
   let mode = 'extractive';
   let text;
   if (config.geminiKey) {
@@ -144,6 +151,7 @@ async function answer(user, question, history = []) {
     mode,
     citations: top.slice(0, 6).map((r, i) => ({ n: i + 1, id: r.listing._id, title: r.listing.title, url: r.listing.url, score: r.score })),
     usedResume: resumeHits.length > 0,
+    understood: constraints,
     retrieved: top.length,
   };
 }

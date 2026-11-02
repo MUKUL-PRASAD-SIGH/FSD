@@ -54,4 +54,15 @@ function parseAsk(question) {
   return { filter, skills, applied, text: q };
 }
 
-module.exports = { parseAsk };
+// In-memory equivalent of the Mongo filter, used by the RAG retriever on its candidate pool
+function matchesFilter(l, f) {
+  if (f.type && l.type !== f.type) return false;
+  if (f.mode && l.mode !== f.mode) return false;
+  if (f.fee && !f.fee.test(l.fee || '')) return false;
+  if (f.prizeInr && !((l.prizeInr || 0) >= f.prizeInr.$gte)) return false;
+  const d = new Date(l.deadline);
+  if (f.deadline?.$lte && d > f.deadline.$lte) return false;
+  return true;
+}
+
+module.exports = { parseAsk, matchesFilter };

@@ -59,3 +59,13 @@ test('ask parser reads type, mode, prize and urgency', () => {
   assert.strictEqual(p.filter.prizeInr.$gte, 100000);
   assert.ok(p.filter.deadline.$lte);
 });
+
+test('ask filters apply in memory the same way as in Mongo', () => {
+  const { parseAsk, matchesFilter } = require('../services/askParser');
+  const f = parseAsk('free online hackathons closing soon with 1L+ prize').filter;
+  const ok = { type: 'HACKATHON', mode: 'ONLINE', fee: 'Free', prizeInr: 200000, deadline: new Date(Date.now() + 2 * 86400000) };
+  assert.ok(matchesFilter(ok, f));
+  assert.ok(!matchesFilter({ ...ok, mode: 'OFFLINE' }, f));
+  assert.ok(!matchesFilter({ ...ok, prizeInr: 5000 }, f));
+  assert.ok(!matchesFilter({ ...ok, deadline: new Date(Date.now() + 30 * 86400000) }, f));
+});

@@ -3,7 +3,7 @@
 const SKILLS = {
   // AI / ML
   'Python': { d: 'AI/ML', a: ['python'] },
-  'Machine Learning': { d: 'AI/ML', a: ['machine learning', 'ml'] },
+  'Machine Learning': { d: 'AI/ML', a: ['machine learning', 'ml', 'ai', 'artificial intelligence', 'a.i.'] },
   'Deep Learning': { d: 'AI/ML', a: ['deep learning', 'neural network', 'neural networks'] },
   'NLP': { d: 'AI/ML', a: ['nlp', 'natural language processing'] },
   'Computer Vision': { d: 'AI/ML', a: ['computer vision', 'opencv'] },
