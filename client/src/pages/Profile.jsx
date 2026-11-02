@@ -7,6 +7,23 @@ import { PasswordMeter, passwordOk } from '../forms.jsx';
 const DOMAINS = ['AI/ML', 'Web Development', 'Data Science', 'Cloud & DevOps', 'Cybersecurity', 'Blockchain & Web3', 'Mobile Development', 'Design', 'Business', 'Competitive Programming', 'Hardware & IoT', 'Software Engineering'];
 const toList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
+function DeleteAccount() {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState('');
+  async function go(e) { e.preventDefault(); setErr(''); try { await api.deleteAccount(pw); logout(); } catch (x) { setErr(x.message); } }
+  if (!open) return <button type="button" className="link small" onClick={() => setOpen(true)}>Delete my account</button>;
+  return (
+    <form onSubmit={go} className="panel" style={{ margin: '12px 0 0' }}>
+      <p className="small">This permanently removes your account, resume data, saved events and notifications.</p>
+      {user.hasPassword && <label>Confirm your password<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} required /></label>}
+      {err && <p className="error" role="alert">{err}</p>}
+      <div className="row"><button className="btn primary">Delete permanently</button><button type="button" className="btn ghost" onClick={() => setOpen(false)}>Cancel</button></div>
+    </form>
+  );
+}
+
 function Security() {
   const { user, adopt, logout } = useAuth();
   const [f, setF] = useState({ current: '', password: '' });
@@ -28,6 +45,7 @@ function Security() {
         <div className="row"><button className="btn primary">{user.hasPassword ? 'Change password' : 'Set password'}</button>
           <button type="button" className="btn ghost" onClick={async () => { await api.logoutAll(); logout(); }}>Sign out everywhere</button></div>
       </form>
+      <DeleteAccount />
     </section>
   );
 }

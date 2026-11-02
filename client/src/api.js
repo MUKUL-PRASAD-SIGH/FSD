@@ -32,6 +32,7 @@ export const api = {
   forgot: (email) => j('POST', '/auth/forgot', { email }),
   reset: (b) => j('POST', '/auth/reset', b),
   changePassword: (b) => j('POST', '/auth/change-password', b),
+  deleteAccount: (password) => request('/auth/me', { method: 'DELETE', body: { password } }),
   logoutAll: () => j('POST', '/auth/logout-all'),
   me: () => request('/auth/me'),
 

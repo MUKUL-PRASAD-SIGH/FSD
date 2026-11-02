@@ -421,6 +421,24 @@ test('public listings API, calendar feed, saved tracker', async () => {
   assert.equal(ask.status, 200);
 });
 
+// ---------------------------------------------------------------- privacy
+test('account deletion erases personal data and requires re-authentication', async () => {
+  const email = 'erase@example.com';
+  const r = await register({ email });
+  const t = r.body.token;
+  const listing = await Listing.findOne({ status: 'published' });
+  await call('PUT', `/api/me/saved/${listing._id}`, { token: t, body: {} });
+  assert.equal((await call('DELETE', '/api/auth/me', { token: t, body: { password: 'wrong' } })).status, 401);
+  assert.equal((await call('DELETE', '/api/auth/me', { token: t, body: { password: PW } })).status, 200);
+  assert.equal(await User.countDocuments({ email }), 0);
+  assert.equal((await call('GET', '/api/auth/me', { token: t })).status, 401);
+  assert.equal((await login(email)).status, 401);
+  const Saved = require('../models/Saved');
+  assert.equal(await Saved.countDocuments({ user: r.body.user.id }), 0);
+  const admin = await login(process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD);
+  assert.equal((await call('DELETE', '/api/auth/me', { token: admin.body.token, body: { password: process.env.ADMIN_PASSWORD } })).status, 400, 'last admin is protected');
+});
+
 // ---------------------------------------------------------------- rate limiting (enabled last)
 test('rate limiting throttles credential stuffing', async () => {
   process.env.TEST_RATE_LIMITS = 'on';

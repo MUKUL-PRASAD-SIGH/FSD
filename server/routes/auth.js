@@ -153,6 +153,23 @@ router.post('/change-password', protect, authLimiter, asyncRoute(async (req, res
   res.json(session(user));
 }));
 
+// Right to erasure: removes the account, resume data, saved items and notifications. Re-auth required.
+router.delete('/me', protect, authLimiter, asyncRoute(async (req, res) => {
+  const user = await User.findById(req.user._id).select('+password');
+  if (user.password && !(await user.comparePassword(String(req.body?.password || '')))) return bad(res, 'Password is incorrect', 401);
+  if (user.role === 'admin' && (await User.countDocuments({ role: 'admin', status: 'active' })) <= 1) return bad(res, 'You are the last admin and cannot delete this account', 400);
+  const Saved = require('../models/Saved');
+  const Listing = require('../models/Listing');
+  await Promise.all([
+    Saved.deleteMany({ user: user._id }),
+    Notification.deleteMany({ user: user._id }),
+    Listing.updateMany({ createdBy: user._id }, { $set: { status: 'unpublished' } }), // keep records, take them offline
+  ]);
+  audit(req, 'auth.delete_account', { actor: user, target: user._id });
+  await user.deleteOne();
+  res.json({ ok: true });
+}));
+
 router.post('/logout-all', protect, asyncRoute(async (req, res) => {
   req.user.tokenVersion += 1;
   await req.user.save();

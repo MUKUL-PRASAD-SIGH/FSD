@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 
-function Stats() {
+function Stats({ tick }) {
   const [s, setS] = useState(null);
-  useEffect(() => { api.adminStats().then(setS).catch(() => {}); }, []);
+  useEffect(() => { api.adminStats().then(setS).catch(() => {}); }, [tick]);
   if (!s) return null;
   return (
     <dl className="stats">
@@ -16,13 +16,13 @@ function Stats() {
   );
 }
 
-function Listers() {
+function Listers({ onChange }) {
   const [status, setStatus] = useState('pending');
   const [rows, setRows] = useState([]);
   const [note, setNote] = useState({});
   const load = useCallback(() => api.adminListers(status).then((r) => setRows(r.listers)), [status]);
   useEffect(() => { load(); }, [load]);
-  async function decide(l, d) { await api.decideLister(l.id, d, note[l.id] || ''); load(); }
+  async function decide(l, d) { await api.decideLister(l.id, d, note[l.id] || ''); load(); onChange?.(); }
   return (
     <section>
       <div className="seg">{['pending', 'approved', 'rejected'].map((s) => <button key={s} className={status === s ? 'on' : ''} onClick={() => setStatus(s)}>{s}</button>)}</div>
@@ -100,15 +100,16 @@ function Audit() {
 export default function Admin() {
   const [tab, setTab] = useState('listers');
   const [msg, setMsg] = useState('');
+  const [tick, setTick] = useState(0);
   const tabs = { listers: Listers, users: Users, listings: Listings, audit: Audit };
   const Tab = tabs[tab];
   return (
     <>
       <div className="row-between"><h1>Admin console</h1><button className="btn ghost" onClick={async () => { const r = await api.runNotifier(); setMsg(`Notifier ran: ${r.created} new notifications`); }}>Run notifier</button></div>
       {msg && <p className="ok small" role="status">{msg}</p>}
-      <Stats />
+      <Stats tick={tick} />
       <div className="seg">{Object.keys(tabs).map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
-      <Tab />
+      <Tab onChange={() => setTick((t) => t + 1)} />
     </>
   );
 }
