@@ -65,7 +65,7 @@ Design choices: deterministic and inspectable (no black-box model), skills extra
 ## 5. RAG pipeline (Pro)
 
 1. **Index** – each listing → one document (title, organiser, type, mode, city, tags, skills, eligibility, description) → embedding stored on the listing with its model name. Resume → ≤ 20 overlapping 650-char chunks → embeddings stored on the user.
-2. **Embeddings** – `local-hash-v1` (384-d feature-hashing over words, bigrams and canonical skill tokens; no network, deterministic) or `gemini-text-embedding-004` (768-d) via `EMBEDDINGS_PROVIDER`. Vectors of different models are never compared; a model switch re-indexes lazily.
+2. **Embeddings** – `local-hash-v1` (384-d feature-hashing over words, bigrams and canonical skill tokens; no network, deterministic) or Gemini `gemini-embedding-001` truncated to 768-d via `EMBEDDINGS_PROVIDER`. Vectors of different models are never compared; a model switch re-indexes lazily.
 3. **Retrieve** – parse hard constraints from the question (type, mode, closing window, prize, free) and filter the pool; embed the question; score = 0.65·question-similarity + 0.35·profile-similarity; re-rank with the rubric (0.6 relevance + 0.4 rubric); add the 2 best resume chunks.
 4. **Generate** – grounded prompt with numbered context. Gemini if configured; otherwise an **extractive** answer assembled from the top matches. Listing text is treated as untrusted data (prompt-injection safe by construction in extractive mode; instruction-fenced in Gemini mode). Responses carry citations.
 
