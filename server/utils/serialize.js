@@ -26,6 +26,7 @@ const publicUser = (u) => ({
   skills: u.skills,
   interests: u.interests,
   preferences: u.preferences,
+  privacy: { shareQuestions: u.privacy?.shareQuestions !== false },
   notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch },
   resume: u.resume?.parsedAt
     ? {

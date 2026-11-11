@@ -56,6 +56,7 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof p.willingToTravel === 'boolean') u.preferences.willingToTravel = p.willingToTravel;
     if (p.minPrizeInr != null) u.preferences.minPrizeInr = Math.min(1e8, Math.max(0, Number(p.minPrizeInr) || 0));
   }
+  if (b.privacy && typeof b.privacy === 'object' && typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
   if (b.notify && typeof b.notify === 'object') {
     if (typeof b.notify.inApp === 'boolean') u.notify.inApp = b.notify.inApp;
     if (typeof b.notify.email === 'boolean') u.notify.email = b.notify.email;

@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema(
       maxTravelKm: { type: Number, default: 0 }, // 0 = online/local only, otherwise "willing to travel anywhere in country" flag below
       willingToTravel: { type: Boolean, default: false },
     },
+    privacy: { shareQuestions: { type: Boolean, default: true } },
     notify: {
       inApp: { type: Boolean, default: true },
       email: { type: Boolean, default: false },

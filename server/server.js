@@ -26,6 +26,7 @@ function buildApp() {
     res.status(db ? 200 : 503).json({ ok: db, db: db ? 'up' : 'down', uptimeSec: Math.round(process.uptime()) });
   });
   app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/listings', require('./routes/listingAgent'));
   app.use('/api/listings', require('./routes/listings'));
   app.use('/api/me', require('./routes/me'));
   app.use('/api/ask', require('./routes/ask'));
