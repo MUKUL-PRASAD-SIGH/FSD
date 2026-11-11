@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const Room = require('../models/Room');
-const { protect } = require('../middleware/auth');
+const { protect, requirePro } = require('../middleware/auth');
 const { messageLimiter } = require('../middleware/security');
 const { asyncRoute } = require('../utils/http');
 const chat = require('../services/chat');
@@ -21,7 +21,8 @@ router.post('/rooms/dm', asyncRoute(async (req, res) => {
   res.json({ roomId: String(room._id) });
 }));
 
-router.post('/rooms', asyncRoute(async (req, res) => {
+// Creating an invite-only private room is Pro (joining one you were invited to is free)
+router.post('/rooms', requirePro, asyncRoute(async (req, res) => {
   const name = str(req.body?.name, 80);
   if (name.length < 2) throw fail(400, 'Give the room a name (2 to 80 characters)');
   if ((await Room.countDocuments({ kind: 'group', createdBy: req.user._id })) >= 20) throw fail(400, 'You can own up to 20 private rooms');

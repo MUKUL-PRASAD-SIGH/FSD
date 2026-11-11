@@ -96,6 +96,7 @@ async function ensureDm(userId, otherId) {
 }
 
 async function createGroup(owner, name) {
+  social.proOnly(owner, 'Creating a private room');
   const room = await Room.create({ kind: 'group', name, createdBy: owner._id, members: [{ user: owner._id, role: 'owner' }] });
   realtime.joinRoom(owner._id, room._id);
   return room;
