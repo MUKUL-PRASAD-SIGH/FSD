@@ -4,7 +4,7 @@ Hackathons, case competitions and contests from 16 sources in one place (de-dupl
 
 MongoDB is the only datastore. The previous version of the project is preserved in [`old/`](old/).
 
-> **Docs:** [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) (what is verified vs not) · [TEST_REPORT](TEST_REPORT.md) · [SOURCE_COVERAGE_REPORT](SOURCE_COVERAGE_REPORT.md) · [ENV_SETUP_GUIDE](ENV_SETUP_GUIDE.md) (every key, step by step) · [TAKEOVER_AUDIT](TAKEOVER_AUDIT.md) · [BRABBLE_PARITY_REPORT](BRABBLE_PARITY_REPORT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [SECURITY](docs/SECURITY.md) · [CRAWLER](docs/CRAWLER.md) (crawler policy, question privacy)
+> **Docs:** [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) (what is verified vs not) · [TEST_REPORT](TEST_REPORT.md) · [SOURCE_COVERAGE_REPORT](SOURCE_COVERAGE_REPORT.md) · [ENV_SETUP_GUIDE](ENV_SETUP_GUIDE.md) (every key, step by step) · [TAKEOVER_AUDIT](TAKEOVER_AUDIT.md) · [BRABBLE_PARITY_REPORT](BRABBLE_PARITY_REPORT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [SECURITY](docs/SECURITY.md) · [CRAWLER](docs/CRAWLER.md) (crawler policy, question privacy) · [SOCIAL](docs/SOCIAL.md) (network, teams, chat, reminders)
 
 ## Plans
 
@@ -16,6 +16,8 @@ MongoDB is the only datastore. The previous version of the project is preserved 
 | In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
 | Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
 | Basic picks from your skills and interests | ✅ | ✅ |
+| Connections, direct messages, private rooms, teams with invites, live notifications, email reminders | ✅ | ✅ |
+| Teammate and open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
 | Resume upload and parsing | ❌ | ✅ |
 | Location-aware ranking (city, state, travel) + eligibility | ❌ | ✅ |
 | 8-criterion recommendation rubric with explanations | ❌ | ✅ |

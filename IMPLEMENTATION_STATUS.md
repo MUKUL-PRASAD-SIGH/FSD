@@ -25,6 +25,7 @@ Run in this session with automated tests and/or browser journeys.
 | Single-process production serving (`SERVE_CLIENT=true`) with a hash-based CSP for the SPA | e2e test; Chromium check |
 | Email verification (soft, banner + `/verify`), breached-password rejection, installable PWA manifest | e2e tests; browser |
 | **Multi-page event crawler** (official info pages + published FAQ, robots/Crawl-delay, 1 req/s, no user-generated areas) and **anonymous question analytics** (private history, opt-out tally, organiser insight) | `crawler.test.js` (9 tests); policy in docs/CRAWLER.md |
+| **Network, teams, chat, reminders**: connections and blocking, live DMs, invite-only private rooms, teams (invite by connection/email, accept joins team + room + tracker), tracker Team up, Register → tracker, live notifications, email reminders; Pro: teammate/team recommendations, smart people search, public teams + join requests, idea voting | `social.test.js` (12 tests with real WebSockets); two-browser run (live toast, badge, DM, team room, idea vote); docs/SOCIAL.md |
 | **Calendar integration**: Google / Outlook / Microsoft 365 add-event links, RFC 5545 `.ics` (folded, escaped, stable UIDs), personalised downloads, and a live per-user subscription feed (secret token, rotate/revoke, chosen reminders, opt-in picks) | `calendar.test.js` (8 tests); browser run: Tracker sync panel and Add-to-calendar menu |
 | **Ask this hackathon**: per-event agent that crawls the event's own page (SSRF-safe, robots-aware, cached in MongoDB) and answers only from it with sources | `page-agent.test.js`; live runs on Unstop, MLH and Devfolio listings |
 | **Resume Studio** (For you page): drag-and-drop upload → parsed skills, inferred interests with scores, graduation year → picks refresh instantly; private to the user | browser run with `resume.pdf` fixture |
@@ -69,6 +70,8 @@ The code exists and is unit-tested where possible, but has not been run against 
 | Push to GitHub refused (Claude GitHub App has no access to `mukundgaur06/FSD_PROJ`) | Reconnect GitHub / install the app; the commits are on the local branch |
 
 ## Known limitations
+- **Realtime scale-out**: one Node process. Several instances need the Socket.IO Redis adapter and a single reminder worker (see docs/SOCIAL.md).
+- **Chat moderation**: users can block and leave; there is no report/review queue or message editing/deleting yet.
 - **Calendar sync on localhost**: Google Calendar and Outlook on the web fetch the feed from their own servers, so they cannot reach a `localhost` feed URL. Apple Calendar / desktop Outlook on the same machine can. Set `APP_URL` to the public address after deploying.
 - **Per-event agent coverage**: pages rendered only by JavaScript (Unstop, many Devfolio sites) yield just the stored listing data, and sites that block bots (Devpost answers HTTP 403) are not bypassed. The agent says so in the answer. A headless-browser fetch would widen coverage but is heavier and raises robots/ToS questions.
 - **DoraHacks** sits behind a bot-verification wall (checked 11 Nov 2026). We don't bypass it, so the source shows as *skipped* on Admin → Sources until `DORAHACKS_API_URL` points at an authorised endpoint. **ETHGlobal** is fixed: the parser now reads the live card layout (4 upcoming events at time of writing). Kaggle and clist need free keys.

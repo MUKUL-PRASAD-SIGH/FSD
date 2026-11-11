@@ -85,6 +85,9 @@ Every listing page has an agent that answers questions about that one event.
 7. **Question analytics** (`services/communityQuestions.js`): your own history (`userqueries`, private, 180-day TTL, deleted with the account) is separate from an anonymous tally (`listingquestions`: no user id; PII-scrubbed; shown only at 2+ asks; opt-out via `privacy.shareQuestions`). Organisers see the aggregate for their own events via `GET /api/lister/listings/:id/questions`.
 Endpoints: `POST /api/listings/:id/ask`, `GET|DELETE /api/listings/:id/ask/history`, `GET /api/listings/:id/questions` (all sign-in required, `no-store`).
 
+## 5c. Network, teams and chat
+Full description, API list and Free/Pro split: [SOCIAL.md](SOCIAL.md). In short: `Connection` (one document per user pair), `Invite` (team invite / join request / room invite share one accept pipeline), `Team`, `Room` (dm / team / group; membership is the only access rule), `Message`, `Idea`, `ReminderLog`. Services: `social` (graph), `chat`, `teams` (invites, capacity guard, tracker auto-save), `teamMatch` (Pro scoring), `notify` (in-app + live + email), `reminders`, `erase`. Live delivery is Socket.IO on the API port with server-decided room membership; REST is a full fallback.
+
 ## 6a. Calendar integration
 - **Builder** (`services/calendar.js`): RFC 5545 output: UTC times, TEXT escaping, line folding at 75 octets without splitting UTF-8 characters, stable UIDs (`deadline-<id>` / `event-<id>`) and a SEQUENCE derived from the listing's `updatedAt`, so calendars update an event in place instead of duplicating it. Each listing becomes a deadline event and, when dates are known, an event-dates event.
 - **Add to calendar** (per listing): `GET /api/calendar/links/:id` returns Google, Outlook.com and Microsoft 365 add-event URLs; `GET /api/calendar/event/:id.ics` (signed in) returns a file with the user's own reminders and tracker status.
