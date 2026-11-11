@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
 import AddToCalendar from './AddToCalendar.jsx';
+import { useToast } from './toast.jsx';
 
 export const inr = (n) => {
   if (n == null) return null;
@@ -32,7 +33,7 @@ export function prizeText(p) {
 const fmtFull = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const INTERACTIVE = 'a,button,input,select,textarea,summary,details,label';
 
-function Details({ item, prize, kind }) {
+function Details({ item, prize, kind, onRegister }) {
   const where = [item.city, item.state, item.country].filter(Boolean).join(', ');
   const rows = [
     [kind[0].toUpperCase() + kind.slice(1), fmtFull(item.deadline)],
@@ -55,7 +56,7 @@ function Details({ item, prize, kind }) {
       <div className="more-actions">
         <Link className="btn ghost" to={`/listing/${item.id}`}>Open full page &amp; ask the AI ↗</Link>
         <AddToCalendar listing={item} />
-        <a className="btn primary" href={item.url} target="_blank" rel="noreferrer noopener">Register on {item.platform} ↗</a>
+        <a className="btn primary" href={item.url} target="_blank" rel="noreferrer noopener" onClick={onRegister}>Register on {item.platform} ↗</a>
       </div>
     </div>
   );
@@ -99,6 +100,12 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
     } finally { setBusy(false); }
   }
 
+  const toast = useToast();
+  // Clicking Register opens the organiser's page AND tracks it as "applied" for signed-in users (never downgrades a later stage)
+  async function registered() {
+    if (!user) return;
+    try { const r = await api.registered(item.id); setIsSaved(true); onSaveChange?.(item.id, true); toast(`Added to your tracker as ${r.saved.status}`, 'good'); } catch { /* the registration link still opens */ }
+  }
   const toggleCard = (e) => {
     if (e.target.closest(INTERACTIVE) || e.target.closest('.more')) return; // links, buttons and the open details are not toggles
     if (window.getSelection()?.toString()) return; // user is selecting text
@@ -133,11 +140,11 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
           {open && <Breakdown rec={rec} />}
         </>
       )}
-      {expanded && <Details item={item} prize={prize} kind={kind} />}
+      {expanded && <Details item={item} prize={prize} kind={kind} onRegister={registered} />}
       <div className="card-actions">
         <button className="btn ghost" onClick={toggleSave} disabled={busy} aria-pressed={isSaved}>{isSaved ? '★ Saved' : '☆ Save'}</button>
         <span className="chev muted small" aria-hidden="true">{expanded ? 'Hide details ▴' : 'Show details ▾'}</span>
-        <a className="btn" href={item.url} target="_blank" rel="noreferrer noopener">Register ↗</a>
+        <a className="btn" href={item.url} target="_blank" rel="noreferrer noopener" onClick={registered}>Register ↗</a>
       </div>
     </article>
   );

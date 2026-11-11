@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { useToast } from '../toast.jsx';
 import ResumeStudio from '../ResumeStudio.jsx';
+import SocialSettings from '../SocialSettings.jsx';
 import { PasswordMeter, passwordOk } from '../forms.jsx';
 
 const DOMAINS = ['AI/ML', 'Web Development', 'Data Science', 'Cloud & DevOps', 'Cybersecurity', 'Blockchain & Web3', 'Mobile Development', 'Design', 'Business', 'Competitive Programming', 'Hardware & IoT', 'Software Engineering'];
@@ -106,6 +107,7 @@ export default function Profile() {
       <div className="row-between"><h1>Your profile</h1><Link className={`pill ${isPro ? '' : 'warm'}`} to="/plan">{isPro ? 'Pro plan' : 'Free plan · upgrade'}</Link></div>
 
       <ResumeStudio title="Resume" onChange={(u) => u && sync(u)} />
+      <SocialSettings />
 
       <form className="panel" onSubmit={save}>
         <h2>What we match on</h2>
