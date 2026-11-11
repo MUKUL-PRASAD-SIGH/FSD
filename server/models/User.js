@@ -62,6 +62,12 @@ const userSchema = new mongoose.Schema(
       willingToTravel: { type: Boolean, default: false },
     },
     privacy: { shareQuestions: { type: Boolean, default: true } },
+    calendar: {
+      token: { type: String, select: false }, // secret feed URL token; looked up by index, never serialised
+      tokenCreatedAt: Date,
+      reminders: { type: [Number], default: [1440] }, // minutes before each deadline
+      includePicks: { type: Boolean, default: false }, // add top recommendations to the feed
+    },
     notify: {
       inApp: { type: Boolean, default: true },
       email: { type: Boolean, default: false },
