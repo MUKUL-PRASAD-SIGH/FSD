@@ -1,44 +1,35 @@
-
-# Environment secrets
+# ---- secrets ---------------------------------------------------------------
 .env
 .env.*
 !.env.example
 
-# Dependencies / build
+# ---- dependencies and build output -------------------------------------------
 node_modules/
 dist/
-*.log
+dist-ssr/
 .vite/
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Frontend build output
-frontend/dist/
-frontend/dist-ssr/
-
-# Backend runtime files
-backend/logs/*
-!backend/logs/.gitkeep
-
-backend/uploads/*
-!backend/uploads/.gitkeep
-
-# Logs and debugging
-*.log
-npm-debug.log*
 coverage/
 
-# Cache
-.vite/
-.cache/
+# ---- local runtime data (never commit) ---------------------------------------
+# `npm run db` stores its MongoDB files here
+.data/
+.data-*.log
+.data-*.err
+*.log
+npm-debug.log*
+server/uploads/
+# legacy folder: runtime logs only
+backend/
+# screenshots and report written by e2e/journeys.js
+e2e/output/
 
-# OS files
+# ---- third-party repos cloned for study --------------------------------------
+reference/
+
+# ---- editors and OS -----------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
 .DS_Store
 Thumbs.db
-.data/
-.data-db.log
-.data-*.log
-.data-api.err
-reference/
-.data-api2.*
+.cache/

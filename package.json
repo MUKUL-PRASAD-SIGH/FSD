@@ -1,0 +1,35 @@
+{
+  "name": "hackelite",
+  "version": "3.0.0",
+  "private": true,
+  "description": "HackElite: live hackathons ranked for you, with a resume-aware recommendation engine, per-event AI agent, calendar sync, and teams with live private chat.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install",
+
+    "db": "npm --prefix server run db",
+    "api": "npm --prefix server start",
+    "web": "npm --prefix client run dev",
+    "dev": "concurrently -k -n db,api,web -c blue,green,magenta \"npm:db\" \"wait-on -t 900000 tcp:127.0.0.1:27017 && npm run api\" \"wait-on -t 900000 tcp:127.0.0.1:5050 && npm run web\"",
+    "dev:nodb": "concurrently -k -n api,web -c green,magenta \"npm run api\" \"wait-on -t 60000 tcp:127.0.0.1:5050 && npm run web\"",
+
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+
+    "test": "npm --prefix server test",
+    "e2e": "npm --prefix server run e2e",
+    "audit": "npm --prefix server audit --omit=dev --audit-level=high && npm --prefix client audit --omit=dev --audit-level=high",
+    "verify": "npm run test && npm run build && npm run e2e",
+
+    "ingest": "npm --prefix server run ingest",
+    "sources:check": "npm --prefix server run sources:check",
+    "integrations:check": "npm --prefix server run integrations:check",
+
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1"
+  }
+}
