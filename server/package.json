@@ -11,7 +11,8 @@
     "test": "node --test --test-concurrency=1",
     "sources:check": "node scripts/source-check.js",
     "integrations:check": "node scripts/check-integrations.js",
-    "db": "node scripts/dev-db.js"
+    "db": "node scripts/dev-db.js",
+    "e2e": "node scripts/e2e-live.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
