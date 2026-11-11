@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { closes, inr, prizeText } from '../components.jsx';
+import HackathonAgent from '../HackathonAgent.jsx';
 
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const KIND = { registration: 'Registration closes', submission: 'Submissions close', event_start: 'Starts (register before)', event_end: 'Ends' };
@@ -46,6 +47,7 @@ export default function ListingDetail() {
       {d.skills?.length > 0 && <p><b>Skills:</b> {d.skills.map((s) => <span key={s} className="pill">{s}</span>)}</p>}
       {d.tags?.length > 0 && <p><b>Themes:</b> {d.tags.map((t) => <span key={t} className="pill">{t}</span>)}</p>}
       {d.description && <section className="panel"><h2>About</h2><p>{d.description}</p></section>}
+      <HackathonAgent listing={d} />
       <p className="small muted">Details are copied from {d.platform}; the organiser’s page is the source of truth.{d.prize?.inr && d.prize.currency && d.prize.currency !== 'INR' ? ` Rupee amount is an estimate (${inr(d.prize.inr)}).` : ''}</p>
     </article>
   );

@@ -57,6 +57,11 @@ export const api = {
   plan: () => request('/plan'),
   activatePro: (key) => j('POST', '/plan/activate', { key }),
   downgrade: () => j('POST', '/plan/downgrade'),
+  listingHistory: (id) => j('GET', `/listings/${id}/ask/history`),
+  clearListingHistory: (id) => j('DELETE', `/listings/${id}/ask/history`),
+  listingQuestions: (id) => j('GET', `/listings/${id}/questions`),
+  listerQuestions: (id) => j('GET', `/lister/listings/${id}/questions`),
+  askListing: (id, question, history) => j('POST', `/listings/${id}/ask`, { question, history }),
   chat: (question, history) => j('POST', '/assistant/chat', { question, history }),
 
   template: () => request('/lister/template'),
