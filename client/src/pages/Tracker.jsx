@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Empty, closes } from '../components.jsx';
+import CalendarSync from '../CalendarSync.jsx';
 
 const STAGES = ['saved', 'applied', 'shortlisted', 'won', 'rejected'];
 
@@ -23,14 +24,13 @@ export default function Tracker() {
     setRows(rows.filter((r) => r.id !== row.id));
     try { await api.unsave(row.listing.id); } catch (e) { setError(e.message); }
   }
-  const icsIds = rows.filter((r) => r.status === 'saved' || r.status === 'applied').map((r) => r.listing.id).join(',');
 
   return (
     <>
       <div className="row-between">
         <h1>Tracker</h1>
-        {icsIds && <a className="btn ghost" href={`/api/listings/calendar.ics?ids=${icsIds}`}>Add deadlines to calendar</a>}
       </div>
+      <CalendarSync />
       {!rows.length && <Empty>Nothing saved yet. Hit “Save” on any listing to track it here.</Empty>}
       <div className="board">
         {STAGES.map((s) => (

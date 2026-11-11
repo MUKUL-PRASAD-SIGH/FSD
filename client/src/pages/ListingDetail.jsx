@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { closes, inr, prizeText } from '../components.jsx';
 import HackathonAgent from '../HackathonAgent.jsx';
+import AddToCalendar from '../AddToCalendar.jsx';
 
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const KIND = { registration: 'Registration closes', submission: 'Submissions close', event_start: 'Starts (register before)', event_end: 'Ends' };
@@ -31,7 +32,7 @@ export default function ListingDetail() {
       <div className="detail-actions">
         <a className="btn primary" href={d.url} target="_blank" rel="noreferrer noopener">Register on {d.platform} ↗</a>
         {user && <button className="btn ghost" onClick={toggle} aria-pressed={!!saved}>{saved ? `★ In tracker (${saved.status})` : '☆ Save to tracker'}</button>}
-        <a className="btn ghost" href={`/api/listings/calendar.ics?ids=${d.id}`}>Add to calendar</a>
+        <AddToCalendar listing={d} />
       </div>
       <dl className="facts">
         <div><dt>{KIND[d.deadlineKind] || 'Deadline'}</dt><dd>{fmt(d.deadline)}</dd></div>

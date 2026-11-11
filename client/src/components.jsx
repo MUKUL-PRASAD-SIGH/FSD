@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
+import AddToCalendar from './AddToCalendar.jsx';
 
 export const inr = (n) => {
   if (n == null) return null;
@@ -53,6 +54,7 @@ function Details({ item, prize, kind }) {
       {item.tags?.length > 0 && <p className="small"><b>Themes:</b> {item.tags.map((t) => <span key={t} className="pill">{t}</span>)}</p>}
       <div className="more-actions">
         <Link className="btn ghost" to={`/listing/${item.id}`}>Open full page &amp; ask the AI ↗</Link>
+        <AddToCalendar listing={item} />
         <a className="btn primary" href={item.url} target="_blank" rel="noreferrer noopener">Register on {item.platform} ↗</a>
       </div>
     </div>

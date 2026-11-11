@@ -81,3 +81,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .more-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .card-actions .chev { align-self: center; }
 @media (max-width: 600px) { .card-actions .chev { display: none; } }
+
+/* ---- add to calendar + calendar sync ---- */
+.cal { position: relative; display: inline-block; }
+.cal-menu { position: absolute; left: 0; top: calc(100% + 6px); min-width: 250px; z-index: 40; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: 0 18px 48px rgb(0 0 0 / .4); animation: rise .15s both; display: grid; }
+.cal-head { margin: 6px 8px 2px; font: 600 .68rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.cal-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; border: 0; background: none; color: var(--text); font: inherit; font-size: .9rem; text-decoration: none; cursor: pointer; }
+.cal-item:hover:not(:disabled), .cal-item:focus-visible { background: color-mix(in srgb, var(--accent) 14%, transparent); outline: none; }
+.cal-sync { max-width: none; display: grid; gap: 12px; }
+.cal-sync .warn { color: var(--warm); margin: 0; }
+.cal-sync input[readonly] { font-family: var(--mono); font-size: .78rem; }

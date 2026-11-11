@@ -61,6 +61,18 @@ export const api = {
   clearListingHistory: (id) => j('DELETE', `/listings/${id}/ask/history`),
   listingQuestions: (id) => j('GET', `/listings/${id}/questions`),
   listerQuestions: (id) => j('GET', `/lister/listings/${id}/questions`),
+  calendarLinks: (id) => request(`/calendar/links/${id}`, { auth: false }),
+  calendarSettings: () => j('GET', '/calendar/settings'),
+  calendarUpdate: (b) => j('PUT', '/calendar/settings', b),
+  calendarCreateToken: () => j('POST', '/calendar/token'),
+  calendarRevoke: () => j('DELETE', '/calendar/token'),
+  // personalised .ics for one listing: fetched with the session token, returned as a Blob to save
+  eventIcs: async (id) => {
+    const res = await fetch(`/api/calendar/event/${id}.ics`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Could not create the calendar file (${res.status})`); }
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'event.ics';
+    return { blob: await res.blob(), filename: name };
+  },
   askListing: (id, question, history) => j('POST', `/listings/${id}/ask`, { question, history }),
   chat: (question, history) => j('POST', '/assistant/chat', { question, history }),
 
