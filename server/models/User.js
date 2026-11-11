@@ -105,5 +105,8 @@ userSchema.methods.comparePassword = function (plain) {
 userSchema.methods.isLocked = function () { return !!(this.lockUntil && this.lockUntil > new Date()); };
 userSchema.methods.isPro = function () { return this.plan?.tier === 'pro' || this.role === 'admin'; };
 
+// The calendar feed finds a user by token on every poll: unique (a token identifies exactly one user) and sparse (most users have none)
+userSchema.index({ 'calendar.token': 1 }, { unique: true, sparse: true });
+
 module.exports = mongoose.model('User', userSchema);
 module.exports.BCRYPT_COST = BCRYPT_COST;

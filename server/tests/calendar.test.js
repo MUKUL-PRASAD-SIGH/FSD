@@ -178,3 +178,12 @@ test('single-event download is personalised and needs sign-in; link endpoint is 
   assert.equal(pub.status, 200); assert.match(pub.text, /^BEGIN:VCALENDAR/);
   for (const line of pub.text.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, 'the generic public feed is folded too');
 });
+
+test('the feed token is indexed (unique + sparse) so each poll is a single index lookup', async () => {
+  await User.init();
+  const idx = (await User.collection.indexes()).find((i) => i.key && i.key['calendar.token'] === 1);
+  assert.ok(idx, 'index on calendar.token exists');
+  assert.equal(idx.unique, true); assert.equal(idx.sparse, true);
+  const explain = await User.collection.find({ 'calendar.token': 'a'.repeat(48) }).explain('queryPlanner');
+  assert.match(JSON.stringify(explain.queryPlanner.winningPlan), /IXSCAN/, 'token lookup uses the index, not a collection scan');
+});

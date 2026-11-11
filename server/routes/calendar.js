@@ -5,6 +5,7 @@ const Saved = require('../models/Saved');
 const Listing = require('../models/Listing');
 const { protect } = require('../middleware/auth');
 const { asyncRoute } = require('../utils/http');
+const { feedLimiter } = require('../middleware/security');
 const { audit } = require('../services/audit');
 const { recommend } = require('../services/recommender');
 const cal = require('../services/calendar');
@@ -49,7 +50,7 @@ const sendIcs = (res, body, filename, { cache = 'private, no-store' } = {}) => {
 };
 
 // ---- Public: the live, per-user subscription feed. Authenticated only by the secret token in the URL.
-router.get('/feed/:token.ics', asyncRoute(async (req, res) => {
+router.get('/feed/:token.ics', feedLimiter, asyncRoute(async (req, res) => {
   const token = req.params.token;
   if (!TOKEN_RE.test(token)) return res.status(404).json({ error: 'Not found' });
   const user = await User.findOne({ 'calendar.token': token, status: 'active' }).select('+calendar.token');
