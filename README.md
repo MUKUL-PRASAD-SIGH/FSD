@@ -16,8 +16,8 @@ MongoDB is the only datastore. The previous version of the project is preserved 
 | In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
 | Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
 | Basic picks from your skills and interests | ✅ | ✅ |
-| Connections, direct messages, private rooms, teams with invites, live notifications, email reminders | ✅ | ✅ |
-| Teammate and open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
+| Connect with people, live direct messages, join teams / private rooms you are invited to, live notifications, email reminders, Register → tracker | ✅ | ✅ |
+| Host hackathon teams and private rooms (invites, tracker team-up), teammate and open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
 | Resume upload and parsing | ❌ | ✅ |
 | Location-aware ranking (city, state, travel) + eligibility | ❌ | ✅ |
 | 8-criterion recommendation rubric with explanations | ❌ | ✅ |

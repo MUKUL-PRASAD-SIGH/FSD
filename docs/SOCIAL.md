@@ -8,9 +8,10 @@ Teammate features inspired by the [Hackathon-Dashboard](https://github.com/MUKUL
 |---|---|---|
 | Connect with people: search by name (opt-in people), request by exact email, accept / decline / block | ✅ | ✅ |
 | Direct messages with connections, live | ✅ | ✅ |
-| Private invite-only group rooms (invite connections, owner controls) | ✅ | ✅ |
-| Teams: create, invite by connection or email, accept → joins team + private room + hackathon lands in the invitee's tracker | ✅ | ✅ |
-| Tracker **Team up** button (finds or creates your team for that hackathon, then invites) | ✅ | ✅ |
+| **Join** a team or private room you were invited to, and chat in it | ✅ | ✅ |
+| **Host** hackathon rooms: create a team with its private team room, invite by connection or email (accept → joins team + room + the hackathon lands in the invitee's tracker) | ❌ | ✅ |
+| **Host** invite-only private group rooms | ❌ | ✅ |
+| Tracker **Team up** (finds or creates your team for that hackathon, then invites) | ❌ | ✅ |
 | **Register** click saves the hackathon to your tracker as *applied* | ✅ | ✅ |
 | Live notifications (socket) + in-app list; email for requests/invites (verified, opt-out) | ✅ | ✅ |
 | Email reminders before tracked deadlines (verified, opt-in, your chosen lead times) | ✅ | ✅ |
@@ -19,6 +20,8 @@ Teammate features inspired by the [Hackathon-Dashboard](https://github.com/MUKUL
 | Plain-English people search ("react designers looking for a team") | ❌ | ✅ |
 | Public teams (discoverable, open to requests) | ❌ | ✅ |
 | Team idea board with ranked voting (1st = 10 pts, 2nd = 5 pts) | ❌ | ✅ |
+
+**Rule of thumb:** Pro members *host* (create and run hackathon rooms); anyone invited can *join and chat* for free. The check lives in the services (`social.proOnly` in `createTeam`, `inviteToTeam`, `inviteToRoom`, `shareListing`, `createGroup`), so no route can bypass it; the UI shows upsells at the same points. A user who owned a team before downgrading keeps it, its room and its history, but cannot invite more people.
 
 ## Privacy model
 - **Opt-in discovery.** Nobody appears in people search or recommendations until they switch on *Let teammates find me* (`social.discoverable`, default off). Only name, headline and skills are ever shown. **Email is never returned by any social endpoint.**
