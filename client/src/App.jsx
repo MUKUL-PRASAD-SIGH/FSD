@@ -12,7 +12,9 @@ import Lister from './pages/Lister.jsx';
 import Admin from './pages/Admin.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
 import Notifications, { Bell, useNotifications } from './pages/Notifications.jsx';
-import { Login, Register, Forgot, Reset } from './pages/Auth.jsx';
+import { Login, Register, Forgot, Reset, Verify } from './pages/Auth.jsx';
+import { api } from './api.js';
+import { useToast } from './toast.jsx';
 
 // Route guards. The server enforces every one of these again; this is only for a sensible UX.
 function Guard({ roles, children }) {
@@ -31,6 +33,15 @@ function Theme() {
     try { localStorage.setItem('theme', n); } catch { /* ignore */ }
   };
   return <button className="btn ghost icon" onClick={flip} aria-label="Toggle theme">{t === 'dark' ? '☀' : '☾'}</button>;
+}
+
+function VerifyBanner() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [sent, setSent] = useState(false);
+  if (!user || user.emailVerified || user.role === 'admin') return null;
+  const send = async () => { try { await api.sendVerification(); setSent(true); toast('Verification email sent', 'good'); } catch (e) { toast(e.message, 'err'); } };
+  return <div className="banner" role="status">Please verify your email address. {sent ? 'Check your inbox.' : <button className="link" onClick={send}>Send verification email</button>}</div>;
 }
 
 export default function App() {
@@ -70,6 +81,7 @@ export default function App() {
           )}
         </div>
       </header>
+      <VerifyBanner />
       <main id="main">
         {ready && (
           <Routes>
@@ -78,6 +90,7 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot" element={<Forgot />} />
             <Route path="/reset" element={<Reset />} />
+            <Route path="/verify" element={<Verify />} />
             <Route path="/ask" element={<Ask />} />
             <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/for-you" element={g(null, <ForYou />)} />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -146,6 +146,24 @@ export function Reset() {
         {err && <p className="error" role="alert">{err}</p>}
         <button className="btn primary wide">Update password</button>
       </form>
+    </Shell>
+  );
+}
+
+export function Verify() {
+  const [sp] = useSearchParams();
+  const { user, refresh } = useAuth();
+  const [state, setState] = useState('working');
+  useEffect(() => {
+    api.verifyEmail(sp.get('token') || '').then(() => { setState('ok'); if (user) refresh(); }).catch(() => setState('bad'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <Shell title="Email verification">
+      {state === 'working' && <p className="muted" aria-live="polite">Verifying…</p>}
+      {state === 'ok' && <p className="ok">Your email is verified. Thank you!</p>}
+      {state === 'bad' && <p className="error">This link is invalid or has expired. Sign in and request a new one from the banner at the top.</p>}
+      <Link className="btn primary wide" to="/">Continue</Link>
     </Shell>
   );
 }
