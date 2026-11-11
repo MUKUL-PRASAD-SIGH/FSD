@@ -6,14 +6,25 @@ const { sanitize } = require('./utils/sanitize');
 const { notFound, errorHandler } = require('./utils/http');
 const User = require('./models/User');
 const Listing = require('./models/Listing');
+const mongoose = require('mongoose');
+const { requestId, accessLog, privateNoStore, compress } = require('./middleware/ops');
 
 function buildApp() {
   const app = express();
+  app.use(requestId);
   applySecurity(app);
+  app.use(compress);
+  app.use(accessLog);
+  app.use(privateNoStore);
   app.use(express.json({ limit: '200kb' }));
   app.use(sanitize);
 
+  // Liveness: the process is up. Readiness: it can actually serve (MongoDB connected). Orchestrators route on the latter.
   app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+  app.get('/api/health/ready', (_req, res) => {
+    const db = mongoose.connection.readyState === 1;
+    res.status(db ? 200 : 503).json({ ok: db, db: db ? 'up' : 'down', uptimeSec: Math.round(process.uptime()) });
+  });
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/listings', require('./routes/listings'));
   app.use('/api/me', require('./routes/me'));
@@ -95,15 +106,27 @@ async function start() {
 
   if (!config.disableIngest) {
     const { runAll } = require('./services/ingest/run');
+    let running = false; // never overlap two syncs in one process
     const tick = async () => {
+      if (running) return;
+      running = true;
       try { const r = await runAll(); console.log('ingest:', JSON.stringify(r.summary), 'after:', JSON.stringify(await afterIngest())); }
       catch (e) { console.error('ingest error', e.message); }
+      finally { running = false; }
     };
-    setTimeout(tick, 3000);
-    setInterval(tick, (Number(process.env.INGEST_INTERVAL_MIN) || 60) * 60 * 1000);
+    setTimeout(tick, 3000).unref();
+    setInterval(tick, (Number(process.env.INGEST_INTERVAL_MIN) || 60) * 60 * 1000).unref();
   }
-  const shutdown = () => server.close(() => process.exit(0));
-  process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
+  // Graceful shutdown: stop accepting, let in-flight requests finish, close MongoDB, then exit (hard stop after 10 s).
+  let closing = false;
+  const shutdown = (sig) => {
+    if (closing) return; closing = true;
+    console.log(`${sig} received, shutting down`);
+    setTimeout(() => process.exit(1), 10000).unref();
+    server.close(async () => { try { await mongoose.disconnect(); } finally { process.exit(0); } });
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM')); process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e));
   return server;
 }
 
