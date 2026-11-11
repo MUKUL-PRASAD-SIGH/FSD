@@ -12,7 +12,7 @@ MongoDB is the only datastore. The previous version of the project is preserved 
 |---|---|---|
 | Browse, filter, sort live listings from 16 sources, listing detail pages | ✅ | ✅ |
 | Save / track applications (Kanban) | ✅ | ✅ |
-| Calendar (.ics) deadline reminders, public JSON API | ✅ | ✅ |
+| Add to Google / Outlook / Apple calendar, live personal calendar feed with your own reminders, public JSON API | ✅ | ✅ |
 | In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
 | Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
 | Basic picks from your skills and interests | ✅ | ✅ |
