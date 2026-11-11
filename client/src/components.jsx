@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
+import AddToCalendar from './AddToCalendar.jsx';
+import { useToast } from './toast.jsx';
 
 export const inr = (n) => {
   if (n == null) return null;
@@ -28,6 +30,38 @@ export function prizeText(p) {
   return p.label && p.label !== 'See listing' ? { text: p.label, title: '' } : null;
 }
 
+const fmtFull = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
+const INTERACTIVE = 'a,button,input,select,textarea,summary,details,label';
+
+function Details({ item, prize, kind, onRegister }) {
+  const where = [item.city, item.state, item.country].filter(Boolean).join(', ');
+  const rows = [
+    [kind[0].toUpperCase() + kind.slice(1), fmtFull(item.deadline)],
+    item.startDate && ['Event starts', fmtFull(item.startDate)],
+    item.endDate && ['Event ends', fmtFull(item.endDate)],
+    ['Format', `${item.mode.toLowerCase()}${where ? ' · ' + where : ''}`],
+    ['Prize', prize ? prize.text + (prize.title ? ` (${prize.title})` : '') : 'Not stated'],
+    ['Entry', item.fee],
+    item.teamMax && ['Team size', `${item.teamMin || 1}–${item.teamMax}`],
+    item.registered && ['Registered', item.registered.toLocaleString('en-IN')],
+    ['Eligibility', item.eligibility?.length ? item.eligibility.join(' · ') : 'Not stated, check the listing'],
+    ['Platform', item.platform + (item.alsoOn?.length ? ', also on ' + item.alsoOn.map((a) => a.platform).join(', ') : '')],
+  ].filter(Boolean);
+  return (
+    <div className="more">
+      <dl className="facts">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      {item.description && <p className="desc">{item.description}</p>}
+      {item.skills?.length > 0 && <p className="small"><b>Skills:</b> {item.skills.map((s) => <span key={s} className="pill">{s}</span>)}</p>}
+      {item.tags?.length > 0 && <p className="small"><b>Themes:</b> {item.tags.map((t) => <span key={t} className="pill">{t}</span>)}</p>}
+      <div className="more-actions">
+        <Link className="btn ghost" to={`/listing/${item.id}`}>Open full page &amp; ask the AI ↗</Link>
+        <AddToCalendar listing={item} />
+        <a className="btn primary" href={item.url} target="_blank" rel="noreferrer noopener" onClick={onRegister}>Register on {item.platform} ↗</a>
+      </div>
+    </div>
+  );
+}
+
 function Breakdown({ rec }) {
   const rows = rec.criteria || Object.entries(rec.breakdown).map(([key, v]) => ({ key, label: key, score: v, points: null, weight: null, detail: '' }));
   return (
@@ -51,6 +85,7 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
   const [busy, setBusy] = useState(false);
   const [isSaved, setIsSaved] = useState(!!saved);
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const c = closes(item.deadline);
   const prize = prizeText(item.prize);
   const kind = KIND[item.deadlineKind] || 'closes';
@@ -65,8 +100,21 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
     } finally { setBusy(false); }
   }
 
+  const toast = useToast();
+  // Clicking Register opens the organiser's page AND tracks it as "applied" for signed-in users (never downgrades a later stage)
+  async function registered() {
+    if (!user) return;
+    try { const r = await api.registered(item.id); setIsSaved(true); onSaveChange?.(item.id, true); toast(`Added to your tracker as ${r.saved.status}`, 'good'); } catch { /* the registration link still opens */ }
+  }
+  const toggleCard = (e) => {
+    if (e.target.closest(INTERACTIVE) || e.target.closest('.more')) return; // links, buttons and the open details are not toggles
+    if (window.getSelection()?.toString()) return; // user is selecting text
+    setExpanded((v) => !v);
+  };
+  const onKey = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); setExpanded((v) => !v); } };
+
   return (
-    <article className="card">
+    <article className={`card clickable ${expanded ? 'expanded' : ''}`} onClick={toggleCard} onKeyDown={onKey} tabIndex={0} aria-expanded={expanded} aria-label={`${item.title}. ${expanded ? 'Collapse' : 'Expand'} details`}>
       <div className="card-top">
         <span className={`pill ${c.tone}`} title={`${kind} ${new Date(item.deadline).toLocaleString('en-IN')}`}>{c.tone ? c.text : `${kind === 'starts' ? 'starts' : 'closes'} ${c.text}`}</span>
         <span className="muted mono">{item.type.toLowerCase()}</span>
@@ -92,9 +140,11 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
           {open && <Breakdown rec={rec} />}
         </>
       )}
+      {expanded && <Details item={item} prize={prize} kind={kind} onRegister={registered} />}
       <div className="card-actions">
         <button className="btn ghost" onClick={toggleSave} disabled={busy} aria-pressed={isSaved}>{isSaved ? '★ Saved' : '☆ Save'}</button>
-        <a className="btn" href={item.url} target="_blank" rel="noreferrer noopener">Register ↗</a>
+        <span className="chev muted small" aria-hidden="true">{expanded ? 'Hide details ▴' : 'Show details ▾'}</span>
+        <a className="btn" href={item.url} target="_blank" rel="noreferrer noopener" onClick={registered}>Register ↗</a>
       </div>
     </article>
   );

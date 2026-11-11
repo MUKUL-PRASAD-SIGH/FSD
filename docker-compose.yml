@@ -1,0 +1,25 @@
+# One command to run everything: `docker compose up --build`  ->  http://localhost:5050
+# Secrets come from the root .env (copy .env.example). MONGO_URI is overridden to point at the compose database.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/hackelite_db
+      NODE_ENV: production
+      CLIENT_ORIGIN: ${APP_URL:-http://localhost:5050}
+    depends_on:
+      mongo: { condition: service_healthy }
+    ports: ["5050:5050"]
+volumes:
+  mongo-data:

@@ -295,3 +295,32 @@ test('runner isolates failures and reports per-source counts', async () => {
   assert.equal(by.offSrc.status, 'skipped');
   assert.equal(r.totals.stored, 2);
 });
+
+test('ethglobal: the live card layout (no embedded JSON) is parsed, with year taken from the slug or end date', () => {
+  const html = `<html><body>
+    <a href="/events/cannes2027"><section><div><div class="uppercase">April</div><div><span>14</span><svg/><span>16</span></div></div><h2>ETHGlobal Cannes 2027</h2><div>Cannes, FranceIRL HackathonApply to Attend</div></section></a>
+    <a href="/events/pragma-cannes2027"><section><div class="uppercase">April</div><span>13</span><h2>Pragma Cannes 2027</h2></section></a>
+    <a href="/events/ethonline2026"><h2>ETHOnline 2026</h2><time>Sep 4th</time><time>Sep 16th, 2026</time><time>Sep 4th</time><time>Sep 16th, 2026</time><div>Online</div></a></body></html>`;
+  const eth = require('../services/ingest/sources/ethglobal').parseHtml(html);
+  assert.deepEqual(eth.map((e) => e.title), ['ETHGlobal Cannes 2027', 'ETHOnline 2026'], 'Pragma side events are skipped');
+  assert.equal(eth[0].endDate.slice(0, 10), '2027-04-16');
+  assert.equal(eth[1].startDate.slice(0, 10), '2026-09-04');
+  assert.equal(eth[1].mode, 'ONLINE');
+});
+
+test('dorahacks is skipped (not failed) while its bot wall blocks automated access', async () => {
+  delete process.env.DORAHACKS_API_URL;
+  const d = require('../services/ingest/sources/dorahacks');
+  const g = d.enabled();
+  assert.equal(g.ok, false);
+  assert.match(g.reason, /bot verification/);
+});
+
+test('HTML entities in platform text are decoded (named, decimal, hex) in every stored text field', () => {
+  const { decodeEntities } = require('../services/ingest/parse');
+  assert.equal(decodeEntities('BuildLab 2026 &mdash; Pro &amp; Co &#8217;s &#x2014; &nbsp;ok'), 'BuildLab 2026 — Pro & Co ’s —  ok');
+  assert.equal(decodeEntities('&unknownentity; stays'), '&unknownentity; stays');
+  const v = validate({ title: 'Hack &amp; Build &mdash; 2026', description: 'Fun &mdash; time', city: 'Science &amp; Technology Building', url: 'https://x.example/e', deadline: new Date(NOW.getTime() + 3 * DAY) }, { now: NOW });
+  assert.equal(v.status, 'valid');
+  assert.deepEqual([v.item.title, v.item.description, v.item.city], ['Hack & Build — 2026', 'Fun — time', 'Science & Technology Building']);
+});

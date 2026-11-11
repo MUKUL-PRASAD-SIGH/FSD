@@ -4,7 +4,10 @@
 const { getJson, paginate } = require('../http');
 const { genericEvent } = require('../generic');
 
+// dorahacks.io answers automated requests with a "Human Verification" bot wall (HTTP 405/404 to the API), checked 11 Nov 2026.
+// We do not bypass bot protection, so the adapter is skipped unless an endpoint you are authorised to use is configured.
 const API = process.env.DORAHACKS_API_URL || 'https://dorahacks.io/api/hackathon/';
+const enabled = () => (process.env.DORAHACKS_API_URL ? { ok: true } : { ok: false, reason: 'dorahacks.io blocks automated access (bot verification); set DORAHACKS_API_URL to an authorised endpoint to enable' });
 const STATUSES = ['ongoing', 'upcoming'];
 
 function map(h) {
@@ -27,4 +30,4 @@ async function fetchListings({ pages } = {}) {
   return out;
 }
 
-module.exports = { name: 'dorahacks', label: 'DoraHacks', fetchListings, map };
+module.exports = { name: 'dorahacks', label: 'DoraHacks', enabled, fetchListings, map };

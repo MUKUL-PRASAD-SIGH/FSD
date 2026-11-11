@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { Empty, closes } from '../components.jsx';
+import CalendarSync from '../CalendarSync.jsx';
+import ShareModal from '../ShareModal.jsx';
 
 const STAGES = ['saved', 'applied', 'shortlisted', 'won', 'rejected'];
 
@@ -9,6 +11,7 @@ export default function Tracker() {
   const { user } = useAuth();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
+  const [share, setShare] = useState(null);
 
   useEffect(() => { if (user) api.saved().then((r) => setRows(r.saved)).catch((e) => setError(e.message)); }, [user]);
 
@@ -23,14 +26,13 @@ export default function Tracker() {
     setRows(rows.filter((r) => r.id !== row.id));
     try { await api.unsave(row.listing.id); } catch (e) { setError(e.message); }
   }
-  const icsIds = rows.filter((r) => r.status === 'saved' || r.status === 'applied').map((r) => r.listing.id).join(',');
 
   return (
     <>
       <div className="row-between">
         <h1>Tracker</h1>
-        {icsIds && <a className="btn ghost" href={`/api/listings/calendar.ics?ids=${icsIds}`}>Add deadlines to calendar</a>}
       </div>
+      <CalendarSync />
       {!rows.length && <Empty>Nothing saved yet. Hit “Save” on any listing to track it here.</Empty>}
       <div className="board">
         {STAGES.map((s) => (
@@ -44,6 +46,7 @@ export default function Tracker() {
                   <select value={r.status} onChange={(e) => move(r, e.target.value)} aria-label="Move to stage">
                     {STAGES.map((x) => <option key={x}>{x}</option>)}
                   </select>
+                  <button className="link" onClick={() => setShare(r.listing)}>team up</button>
                   <button className="link" onClick={() => remove(r)}>remove</button>
                 </div>
               </div>
@@ -51,6 +54,7 @@ export default function Tracker() {
           </section>
         ))}
       </div>
+      {share && <ShareModal listing={share} onClose={() => setShare(null)} />}
     </>
   );
 }

@@ -143,10 +143,23 @@ function parsePrize(input, defaultCurrency = 'USD') {
   return best;
 }
 
-const stripHtml = (s) => String(s || '')
+// Decodes HTML entities (named, decimal and hex) that platforms leave in plain-text fields: &mdash; &amp; &#8217; &#x2014; ...
+const NAMED = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", mdash: '—', ndash: '–', hellip: '…', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', bull: '•', middot: '·', times: '×', copy: '©', reg: '®', trade: '™', euro: '€', pound: '£', yen: '¥', rupee: '₹', deg: '°', laquo: '«', raquo: '»', eacute: 'é', egrave: 'è', aacute: 'á', uuml: 'ü', ouml: 'ö', auml: 'ä', ntilde: 'ñ', ccedil: 'ç', shy: '' };
+function decodeEntities(s) {
+  return String(s ?? '').replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z][a-z0-9]{1,8});/gi, (m, e) => {
+    if (e[0] === '#') {
+      const code = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+    }
+    const v = NAMED[e.toLowerCase()];
+    return v === undefined ? m : v;
+  });
+}
+
+const stripHtml = (s) => decodeEntities(String(s || '')
   .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
   .replace(/<[^>]*>/g, ' ')
-  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+  )
   .replace(/\s+/g, ' ')
   .trim();
 
@@ -196,4 +209,4 @@ function findEventArrays(obj, { minLen = 1 } = {}) {
   return found;
 }
 
-module.exports = { parseDate, parseDateRange, zoned, parsePrize, formatMoney, rupees, stripHtml, jsonLdEvents, nextData, findEventArrays, MONTHS };
+module.exports = { parseDate, parseDateRange, zoned, parsePrize, formatMoney, rupees, stripHtml, decodeEntities, jsonLdEvents, nextData, findEventArrays, MONTHS };

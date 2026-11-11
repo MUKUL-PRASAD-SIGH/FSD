@@ -35,7 +35,7 @@ export default function Ask() {
             {res.total} open listing{res.total === 1 ? '' : 's'} matched the filters.
           </p>
           <div className="grid">{res.results.map((r) => <ListingCard key={r.listing.id} item={r.listing} rec={r} />)}</div>
-          {!res.results.length && <Empty>No open listings fit that. Try fewer constraints.</Empty>}
+          {!res.results.length && <Empty>{res.note || 'No open listings fit that. Try fewer constraints.'}</Empty>}
         </>
       )}
     </>

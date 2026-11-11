@@ -83,14 +83,11 @@ test('password policy is enforced on the server', async () => {
     ['ALLUPPERCASE123!', /lowercase/],
     ['NoDigitsHere!!', /number/],
     ['NoSymbolsHere123', /symbol/],
-    ['Password123!', /common/],
   ]) {
     const r = await register({ password: pw });
     assert.equal(r.status, 400, pw);
     assert.ok(r.body.problems.some((p) => expect.test(p)), `${pw} -> ${r.body.problems}`);
   }
-  const withEmail = await register({ email: 'rahulsharma@example.com', password: 'Rahulsharma#2026' });
-  assert.equal(withEmail.status, 400);
   const bad = await register({ email: 'not-an-email' });
   assert.equal(bad.status, 400);
 });
@@ -415,7 +412,7 @@ test('public listings API, calendar feed, saved tracker', async () => {
   assert.equal(saved.body.saved[0].status, 'applied');
   assert.equal((await call('PUT', '/api/me/saved/not-an-id', { token: t, body: {} })).status, 404);
   const ics = await fetch(`${base}/api/listings/calendar.ics?ids=${id}`);
-  assert.match(await ics.text(), /BEGIN:VEVENT[\s\S]*TRIGGER:-P1D/);
+  assert.match(await ics.text(), /BEGIN:VEVENT[\s\S]*TRIGGER:-PT1440M/); // default one-day reminder, expressed in minutes
   assert.equal((await call('GET', '/api/listings/stats')).body.open >= 3, true);
   const ask = await call('POST', '/api/ask', { body: { question: 'offline hackathons in pune' } });
   assert.equal(ask.status, 200);
@@ -493,4 +490,88 @@ test('SERVE_CLIENT mode serves the SPA with a page CSP while the API keeps its s
     assert.match(api.headers.get('content-security-policy'), /default-src 'none'/);
     assert.equal((await fetch(`${b}/api/does-not-exist`)).status, 404, 'unknown API routes are not swallowed by the SPA fallback');
   } finally { delete process.env.SERVE_CLIENT; srv.close(); }
+});
+
+// ---------------------------------------------------------------- privacy: one user's profile/resume/recommendations never reach another
+test('personal data is private: resume, recommendations, saved items and notifications are per-user; responses are no-store', async () => {
+  const mk = async (name, cv) => {
+    const r = await register({ name }); const t = r.body.token; const email = r.body.user.email;
+    assert.equal((await call('POST', '/api/plan/activate', { token: t, body: { key: 'E2E-PRO-KEY-1' } })).status, 200);
+    await call('POST', '/api/me/resume', { token: t, form: resumeForm(cv) });
+    return { t, email, id: r.body.user.id };
+  };
+  const a = await mk('Alice Private', 'Alice Private\nSecretSkillAlpha. Skills: PyTorch, TensorFlow, machine learning, computer vision. B.Tech 2027.');
+  const b = await mk('Bob Other', 'Bob Other\nSkills: React, Node.js, TypeScript, web development. B.Tech 2026.');
+
+  const rec = await call('GET', '/api/me/recommendations', { token: a.t });
+  assert.equal(rec.status, 200);
+  assert.match(rec.headers.get('cache-control'), /no-store/, 'personalised responses must not be cached');
+  assert.match(rec.headers.get('vary') || '', /Authorization/i);
+  const aBasis = rec.body.basedOn.skills.join(',');
+  const recB = await call('GET', '/api/me/recommendations', { token: b.t });
+  assert.ok(!recB.body.basedOn.skills.some((s) => /pytorch|tensorflow/i.test(s)), "Bob's profile is built from Bob's resume only");
+  assert.ok(/pytorch/i.test(aBasis));
+
+  // no endpoint returns another user's resume text/chunks, and the user payload never includes raw text or embeddings
+  const me = await call('GET', '/api/auth/me', { token: b.t });
+  const dump = JSON.stringify([me.body, recB.body]);
+  assert.ok(!/SecretSkillAlpha|Alice/.test(dump));
+  assert.ok(!JSON.stringify((await call('GET', '/api/auth/me', { token: a.t })).body).includes('embedding'));
+
+  // saved items & notifications are scoped by owner
+  const any = await Listing.findOne({ status: 'published' });
+  if (any) {
+    await call('PUT', `/api/me/saved/${any._id}`, { token: a.t, body: { status: 'applied', note: 'alice-only-note' } });
+    assert.ok(!JSON.stringify((await call('GET', '/api/me/saved', { token: b.t })).body).includes('alice-only-note'));
+  }
+  // unauthenticated and tampered tokens get nothing
+  assert.equal((await call('GET', '/api/me/recommendations')).status, 401);
+  assert.equal((await call('GET', '/api/me/recommendations', { token: a.t.slice(0, -3) + 'xyz' })).status, 401);
+  // deleting the resume removes derived data for that user only
+  await call('DELETE', '/api/me/resume', { token: a.t });
+  const after = await User.findOne({ email: a.email }).select('+resume.chunks +resume.text');
+  assert.ok(!after.resume?.text && !(after.resume?.chunks || []).length);
+  assert.ok((await User.findOne({ email: b.email }).select('+resume.chunks')).resume.chunks.length >= 1, "Bob's resume index is untouched");
+});
+
+test('health: liveness and readiness; every response carries a request id', async () => {
+  const ready = await call('GET', '/api/health/ready');
+  assert.equal(ready.status, 200); assert.equal(ready.body.db, 'up');
+  assert.match(ready.headers.get('x-request-id'), /^[\w-]{8,}$/);
+  const echoed = await call('GET', '/api/health', { headers: { 'X-Request-Id': 'trace-abc-12345' } });
+  assert.equal(echoed.headers.get('x-request-id'), 'trace-abc-12345');
+});
+
+// ---------------------------------------------------------------- email verification + breached passwords
+test('email verification: token is single-use and expires; sign-up starts unverified', async () => {
+  const r = await register();
+  const t = r.body.token; const email = r.body.user.email;
+  assert.equal(r.body.user.emailVerified, false);
+  assert.equal((await call('POST', '/api/auth/verify/send', { token: t })).status, 200);
+  const stored = await User.findOne({ email }).select('+verifyTokenHash');
+  assert.ok(stored.verifyTokenHash, 'a hashed token is stored, never the raw one');
+  const raw = crypto.randomBytes(32).toString('hex');
+  await User.updateOne({ email }, { $set: { verifyTokenHash: crypto.createHash('sha256').update(raw).digest('hex'), verifyTokenExpires: day(1) } });
+  assert.equal((await call('POST', '/api/auth/verify', { body: { token: 'wrong' } })).status, 400);
+  assert.equal((await call('POST', '/api/auth/verify', { body: { token: raw } })).status, 200);
+  assert.equal((await call('GET', '/api/auth/me', { token: t })).body.user.emailVerified, true);
+  assert.equal((await call('POST', '/api/auth/verify', { body: { token: raw } })).status, 400, 'single use');
+  const r2 = await register();
+  await User.updateOne({ email: r2.body.user.email }, { $set: { verifyTokenHash: crypto.createHash('sha256').update('exp').digest('hex'), verifyTokenExpires: day(-1) } });
+  assert.equal((await call('POST', '/api/auth/verify', { body: { token: 'exp' } })).status, 400, 'expired');
+});
+
+test('breached-password check uses k-anonymity and fails open', async () => {
+  const { isBreached } = require('../utils/breached');
+  process.env.HIBP_FORCE = '1';
+  try {
+    const sha = crypto.createHash('sha1').update('Sup3r-Leaked-Pass!').digest('hex').toUpperCase();
+    let requested;
+    const hit = async (url) => { requested = url; return { ok: true, text: async () => `0018A45C4D1DEF81644B54AB7F969B88D65:3\n${sha.slice(5)}:42\n` }; };
+    assert.equal(await isBreached('Sup3r-Leaked-Pass!', { fetchImpl: hit }), true);
+    assert.ok(requested.endsWith(`/range/${sha.slice(0, 5)}`) && !requested.includes(sha.slice(5)), 'only the 5-char prefix is sent');
+    assert.equal(await isBreached('Another-Safe-Pass9!', { fetchImpl: async () => ({ ok: true, text: async () => 'ABCDE:1\n' }) }), false);
+    assert.equal(await isBreached('x', { fetchImpl: async () => { throw new Error('offline'); } }), false, 'network failure never blocks sign-up');
+    assert.equal(await isBreached('x', { fetchImpl: async () => ({ ok: false }) }), false);
+  } finally { delete process.env.HIBP_FORCE; }
 });

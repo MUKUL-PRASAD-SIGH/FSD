@@ -12,7 +12,14 @@ import Lister from './pages/Lister.jsx';
 import Admin from './pages/Admin.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
 import Notifications, { Bell, useNotifications } from './pages/Notifications.jsx';
-import { Login, Register, Forgot, Reset } from './pages/Auth.jsx';
+import { Login, Register, Forgot, Reset, Verify } from './pages/Auth.jsx';
+import Network from './pages/Network.jsx';
+import Teams from './pages/Teams.jsx';
+import TeamPage from './pages/TeamPage.jsx';
+import Chat from './pages/Chat.jsx';
+import { useRealtime } from './realtime.jsx';
+import { api } from './api.js';
+import { useToast } from './toast.jsx';
 
 // Route guards. The server enforces every one of these again; this is only for a sensible UX.
 function Guard({ roles, children }) {
@@ -33,8 +40,18 @@ function Theme() {
   return <button className="btn ghost icon" onClick={flip} aria-label="Toggle theme">{t === 'dark' ? '☀' : '☾'}</button>;
 }
 
+function VerifyBanner() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [sent, setSent] = useState(false);
+  if (!user || user.emailVerified || user.role === 'admin') return null;
+  const send = async () => { try { await api.sendVerification(); setSent(true); toast('Verification email sent', 'good'); } catch (e) { toast(e.message, 'err'); } };
+  return <div className="banner" role="status">Please verify your email address. {sent ? 'Check your inbox.' : <button className="link" onClick={send}>Send verification email</button>}</div>;
+}
+
 export default function App() {
   const { user, ready, logout, isPro } = useAuth();
+  const { counts } = useRealtime();
   const [notes, reloadNotes] = useNotifications(!!user);
   const link = ({ isActive }) => (isActive ? 'active' : '');
   const g = (roles, el) => <Guard roles={roles}>{el}</Guard>;
@@ -50,6 +67,9 @@ export default function App() {
           <NavLink to="/ask" className={link}>Ask</NavLink>
           {user && <NavLink to="/assistant" className={link}>Assistant{!isPro && <span className="pill tiny">Pro</span>}</NavLink>}
           {user && <NavLink to="/tracker" className={link}>Tracker</NavLink>}
+          {user && <NavLink to="/network" className={link}>Network{counts.pending > 0 && <b className="badge static">{counts.pending}</b>}</NavLink>}
+          {user && <NavLink to="/teams" className={link}>Teams</NavLink>}
+          {user && <NavLink to="/chat" className={link}>Chat{counts.chat > 0 && <b className="badge static">{counts.chat > 9 ? '9+' : counts.chat}</b>}</NavLink>}
           {user?.role === 'lister' && <NavLink to="/lister" className={link}>My events</NavLink>}
           {user?.role === 'admin' && <NavLink to="/admin" className={link}>Admin</NavLink>}
         </nav>
@@ -70,6 +90,7 @@ export default function App() {
           )}
         </div>
       </header>
+      <VerifyBanner />
       <main id="main">
         {ready && (
           <Routes>
@@ -78,11 +99,17 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot" element={<Forgot />} />
             <Route path="/reset" element={<Reset />} />
+            <Route path="/verify" element={<Verify />} />
             <Route path="/ask" element={<Ask />} />
             <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/for-you" element={g(null, <ForYou />)} />
             <Route path="/assistant" element={g(null, <Assistant />)} />
             <Route path="/tracker" element={g(null, <Tracker />)} />
+            <Route path="/network" element={g(null, <Network />)} />
+            <Route path="/teams" element={g(null, <Teams />)} />
+            <Route path="/teams/:id" element={g(null, <TeamPage />)} />
+            <Route path="/chat" element={g(null, <Chat />)} />
+            <Route path="/chat/:roomId" element={g(null, <Chat />)} />
             <Route path="/notifications" element={g(null, <Notifications />)} />
             <Route path="/plan" element={g(null, <Plan />)} />
             <Route path="/profile" element={g(null, <Profile />)} />

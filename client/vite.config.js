@@ -4,5 +4,5 @@ import react from '@vitejs/plugin-react';
 // Dev: the browser talks to Vite, which proxies /api to the Express server.
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, proxy: { '/api': 'http://localhost:5050' } },
+  server: { port: 5173, proxy: { '/api': 'http://localhost:5050', '/socket.io': { target: 'http://localhost:5050', ws: true } } },
 });

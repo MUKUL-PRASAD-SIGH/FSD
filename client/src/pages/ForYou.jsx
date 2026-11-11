@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { ListingCard, Empty, SkeletonGrid } from '../components.jsx';
+import ResumeStudio from '../ResumeStudio.jsx';
 
 export default function ForYou() {
   const [data, setData] = useState(null);
@@ -18,11 +19,7 @@ export default function ForYou() {
   return (
     <>
       <div className="row-between"><h1>For you</h1><span className={`pill ${pro ? '' : 'warm'}`}>{pro ? 'Pro rubric' : 'Basic picks'}</span></div>
-      {!pro && (
-        <div className="panel upsell">
-          <strong>Want sharper picks?</strong> Pro reads your resume, ranks by your city and eligibility, and explains each score across 8 criteria. <Link to="/plan">Unlock Pro</Link>
-        </div>
-      )}
+      <ResumeStudio onChange={load} />
       {!data.hasSignal ? (
         <Empty>We don’t know enough about you yet. <Link to="/profile">Add skills and interests{pro ? ' or upload your resume' : ''}</Link> and this page fills in.</Empty>
       ) : (

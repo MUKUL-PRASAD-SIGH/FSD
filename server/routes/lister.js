@@ -30,6 +30,12 @@ router.get('/listings', requireRole('lister', 'admin'), asyncRoute(async (req, r
   res.json({ listings: rows.map((l) => ({ ...shape(l), status: l.status })) });
 }));
 
+router.get('/listings/:id/questions', requireRole('lister', 'admin'), asyncRoute(async (req, res) => {
+  const l = await Listing.findById(req.params.id).select('createdBy title').lean().catch(() => null);
+  if (!l || (String(l.createdBy) !== String(req.user._id) && req.user.role !== 'admin')) return res.status(404).json({ error: 'Listing not found' });
+  res.json({ title: l.title, ...(await require('../services/communityQuestions').forOrganiser(l._id)) });
+}));
+
 router.post('/listings', requireApprovedLister, asyncRoute(async (req, res) => {
   const { errors, data } = validateListing(req.body || {});
   if (Object.keys(errors).length) return res.status(400).json({ error: 'Please fix the highlighted fields', fields: errors });

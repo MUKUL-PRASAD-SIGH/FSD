@@ -4,7 +4,7 @@ Hackathons, case competitions and contests from 16 sources in one place (de-dupl
 
 MongoDB is the only datastore. The previous version of the project is preserved in [`old/`](old/).
 
-> **Docs:** [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) (what is verified vs not) · [TEST_REPORT](TEST_REPORT.md) · [SOURCE_COVERAGE_REPORT](SOURCE_COVERAGE_REPORT.md) · [ENV_SETUP_GUIDE](ENV_SETUP_GUIDE.md) (every key, step by step) · [TAKEOVER_AUDIT](TAKEOVER_AUDIT.md) · [BRABBLE_PARITY_REPORT](BRABBLE_PARITY_REPORT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [SECURITY](docs/SECURITY.md)
+> **Docs:** [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) (what is verified vs not) · [TEST_REPORT](TEST_REPORT.md) · [SOURCE_COVERAGE_REPORT](SOURCE_COVERAGE_REPORT.md) · [ENV_SETUP_GUIDE](ENV_SETUP_GUIDE.md) (every key, step by step) · [TAKEOVER_AUDIT](TAKEOVER_AUDIT.md) · [BRABBLE_PARITY_REPORT](BRABBLE_PARITY_REPORT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [SECURITY](docs/SECURITY.md) · [CRAWLER](docs/CRAWLER.md) (crawler policy, question privacy) · [SOCIAL](docs/SOCIAL.md) (network, teams, chat, reminders)
 
 ## Plans
 
@@ -12,10 +12,12 @@ MongoDB is the only datastore. The previous version of the project is preserved 
 |---|---|---|
 | Browse, filter, sort live listings from 16 sources, listing detail pages | ✅ | ✅ |
 | Save / track applications (Kanban) | ✅ | ✅ |
-| Calendar (.ics) deadline reminders, public JSON API | ✅ | ✅ |
+| Add to Google / Outlook / Apple calendar, live personal calendar feed with your own reminders, public JSON API | ✅ | ✅ |
 | In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
 | Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
 | Basic picks from your skills and interests | ✅ | ✅ |
+| Connections, direct messages, private rooms, teams with invites, live notifications, email reminders | ✅ | ✅ |
+| Teammate and open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
 | Resume upload and parsing | ❌ | ✅ |
 | Location-aware ranking (city, state, travel) + eligibility | ❌ | ✅ |
 | 8-criterion recommendation rubric with explanations | ❌ | ✅ |
@@ -42,7 +44,9 @@ Then sign in → **Upgrade** (or `/plan`) → paste the key → **Activate Pro**
 
 ## Quick start
 
-Requires **Node 20+** and a running **MongoDB**.
+Requires **Node 20+** and a MongoDB. No MongoDB installed? Run `cd server && npm install && npm run db` in a spare terminal: it starts a real, persistent local database on `127.0.0.1:27017` (the default `MONGO_URI`).
+
+**Or run everything with Docker:** `docker compose up --build` → http://localhost:5050 (app + MongoDB, production mode; needs the root `.env`).
 
 ```bash
 # 1. configure (the .env already in the repo root is git-ignored; see .env.example for every option)
@@ -56,7 +60,7 @@ cd client && npm install && npm run dev
 ```
 
 Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
-The admin password must satisfy the policy (10+ chars, upper/lower, digit, symbol, not a common word).
+The admin password must satisfy the policy (10+ chars, upper/lower, digit, symbol; passwords found in known data breaches are rejected).
 `npm run seed` adds 12 offline sample listings (auto-removed after the first live ingest).
 
 ### Environment variables

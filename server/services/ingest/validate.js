@@ -16,7 +16,8 @@ const TYPES = ['HACKATHON', 'CASE STUDY', 'CONTEST', 'CODING', 'INNOVATION', 'DE
 const MODES = ['ONLINE', 'OFFLINE', 'HYBRID'];
 const MAX_AHEAD_MS = 2 * 365 * 86400000;
 
-const clip = (s, n) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+const { decodeEntities } = require('./parse');
+const clip = (s, n) => decodeEntities(String(s ?? '')).replace(/\s+/g, ' ').trim().slice(0, n);
 const list = (a, n, each = 60) => [...new Set((Array.isArray(a) ? a : []).map((x) => clip(typeof x === 'string' ? x : x?.name ?? '', each)).filter(Boolean))].slice(0, n);
 
 function httpUrl(u) {

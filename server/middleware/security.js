@@ -10,9 +10,15 @@ const off = () => config.isTest && process.env.TEST_RATE_LIMITS !== 'on';
 const limiter = (windowMs, max, message) =>
   rateLimit({ windowMs, max, standardHeaders: true, legacyHeaders: false, handler: json429(message), skip: off });
 
-const globalLimiter = limiter(60 * 1000, 300, 'Too many requests. Slow down and try again shortly.');
+const baseGlobal = limiter(60 * 1000, 300, 'Too many requests. Slow down and try again shortly.');
+// Calendar apps poll the feed from shared provider servers (Google, Microsoft): thousands of users can share one IP, so the
+// feed has its own, much higher ceiling and is excluded from the per-IP global limit. Tokens are 192-bit, so guessing is not a concern.
+const FEED = /^\/api\/calendar\/feed\//;
+const globalLimiter = (req, res, next) => (FEED.test(req.path) ? next() : baseGlobal(req, res, next));
+const feedLimiter = limiter(60 * 1000, 3000, 'Calendar feed is being requested too often.');
 const authLimiter = limiter(15 * 60 * 1000, 30, 'Too many sign-in attempts. Try again in a few minutes.');
 const heavyLimiter = limiter(60 * 1000, 20, 'Too many requests to this feature. Wait a minute.');
+const messageLimiter = limiter(60 * 1000, 120, 'You are sending messages too fast. Slow down a little.');
 
 function applySecurity(app) {
   app.disable('x-powered-by');
@@ -36,4 +42,4 @@ function applySecurity(app) {
   app.use(globalLimiter);
 }
 
-module.exports = { applySecurity, authLimiter, heavyLimiter };
+module.exports = { applySecurity, authLimiter, heavyLimiter, feedLimiter, messageLimiter };

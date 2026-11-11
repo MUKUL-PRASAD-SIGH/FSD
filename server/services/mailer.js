@@ -10,7 +10,10 @@ function getTransport() {
   return transport;
 }
 
+const outbox = []; // test builds only: every message that would have been sent
+
 async function sendMail({ to, subject, text }) {
+  if (config.isTest) { outbox.push({ to, subject, text }); return { sent: false, captured: true }; }
   const t = getTransport();
   if (!t) {
     if (!config.isProd && !config.isTest) console.log(`[mail:dev] to=${to} subject="${subject}"\n${text}\n`);
@@ -22,4 +25,4 @@ async function sendMail({ to, subject, text }) {
 
 const mailEnabled = () => !!config.smtpUrl;
 
-module.exports = { sendMail, mailEnabled };
+module.exports = { sendMail, mailEnabled, outbox };

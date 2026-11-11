@@ -62,6 +62,24 @@ function ListingForm({ tpl, initial, onSaved, onCancel }) {
   );
 }
 
+// What participants ask about this event: anonymous aggregate, no identities.
+function QuestionsButton({ id }) {
+  const [data, setData] = useState(null);
+  const [open, setOpen] = useState(false);
+  const toggle = async () => { if (!open && !data) { try { setData(await api.listerQuestions(id)); } catch { setData({ questions: [], total: 0, distinct: 0 }); } } setOpen(!open); };
+  return (
+    <>
+      <button className="btn ghost" onClick={toggle} aria-expanded={open}>Questions</button>
+      {open && data && (
+        <div className="panel" style={{ flexBasis: '100%', margin: '8px 0 0', maxWidth: 'none' }}>
+          <p className="small muted">{data.total} question{data.total === 1 ? '' : 's'} asked about this event ({data.distinct} different). Anonymous: no names or accounts.</p>
+          {data.questions.length ? <ol className="cites">{data.questions.map((x) => <li key={x.text}>{x.text} <b>· {x.count}×</b></li>)}</ol> : <p className="muted small">No questions yet.</p>}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Lister() {
   const { user, refresh } = useAuth();
   const [tpl, setTpl] = useState(null);
@@ -98,7 +116,7 @@ export default function Lister() {
         {rows.map((l) => (
           <li key={l.id} className="panel row-between">
             <div><strong>{l.title}</strong><div className="small muted">{l.type.toLowerCase()} · {l.mode.toLowerCase()} · {closes(l.deadline).text} · {l.status}</div></div>
-            <div className="row"><button className="btn ghost" onClick={() => setEditing(l)}>Edit</button><button className="btn ghost" onClick={() => remove(l)}>Delete</button></div>
+            <div className="row"><QuestionsButton id={l.id} /><button className="btn ghost" onClick={() => setEditing(l)}>Edit</button><button className="btn ghost" onClick={() => remove(l)}>Delete</button></div>
           </li>
         ))}
       </ul>

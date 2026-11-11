@@ -1,7 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { INDIA, STATES, normaliseCity, stateOfCity } from '../data/india.js';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { useToast } from '../toast.jsx';
+import ResumeStudio from '../ResumeStudio.jsx';
+import SocialSettings from '../SocialSettings.jsx';
 import { PasswordMeter, passwordOk } from '../forms.jsx';
 
 const DOMAINS = ['AI/ML', 'Web Development', 'Data Science', 'Cloud & DevOps', 'Cybersecurity', 'Blockchain & Web3', 'Mobile Development', 'Design', 'Business', 'Competitive Programming', 'Hardware & IoT', 'Software Engineering'];
@@ -57,6 +61,18 @@ export default function Profile() {
   const [interests, setInterests] = useState(user.interests || []);
   const [prefs, setPrefs] = useState(user.preferences || {});
   const [loc, setLoc] = useState(user.location || { city: '', state: '' });
+  // Location saves itself as soon as it's chosen, so leaving the page without pressing Save never loses it.
+  const toast = useToast();
+  const firstLoc = useRef(true);
+  useEffect(() => {
+    if (firstLoc.current) { firstLoc.current = false; return undefined; }
+    if (!loc.state && !loc.city && !loc.country) return undefined;
+    const t = setTimeout(() => {
+      api.updateProfile({ location: loc }).then((r) => { setUser(r.user); toast('Location saved', 'good'); }).catch((e) => toast(e.message, 'err'));
+    }, 600);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.state, loc.city, loc.country]);
   const [edu, setEdu] = useState(user.education || { level: '', gradYear: '' });
   const [notify, setNotify] = useState(user.notify || { inApp: true, email: false, minMatch: 55 });
   const [college, setCollege] = useState(user.college || '');
@@ -90,30 +106,8 @@ export default function Profile() {
     <>
       <div className="row-between"><h1>Your profile</h1><Link className={`pill ${isPro ? '' : 'warm'}`} to="/plan">{isPro ? 'Pro plan' : 'Free plan · upgrade'}</Link></div>
 
-      <section className="panel">
-        <h2>Resume {!isPro && <span className="pill">Pro</span>}</h2>
-        {!isPro ? (
-          <p className="muted small">Resume parsing and RAG personalisation are part of Pro. <Link to="/plan">Activate Pro</Link> to upload your resume. You can still fill in your skills below for basic picks.</p>
-        ) : (
-          <>
-            <p className="muted small">PDF, DOCX or TXT, up to 5 MB. It’s read in memory and not stored; we keep the extracted text, skills and searchable chunks in your account.</p>
-            <div className="row">
-              <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md" onChange={(e) => upload(e.target.files[0])} disabled={busy} aria-label="Upload resume" />
-              {r && <button className="link" onClick={async () => sync((await api.deleteResume()).user)}>Remove parsed data</button>}
-            </div>
-            {r && (
-              <div className="parsed">
-                <p className="small">Parsed <strong>{r.fileName}</strong> on {new Date(r.parsedAt).toLocaleDateString()}{r.graduationYear ? ` · graduating ${r.graduationYear}` : ''}{r.indexed ? ` · indexed (${r.indexed})` : ''}</p>
-                <div className="bars" aria-label="Domain strengths">
-                  {r.domains.slice(0, 5).map((d) => <div key={d.name} className="bar"><span>{d.name}</span><i style={{ '--w': `${Math.round(d.score * 100)}%` }} /><b>{Math.round(d.score * 100)}%</b></div>)}
-                </div>
-                {r.skills?.length > 0 && <p className="small"><b>Skills found ({r.skills.length}):</b> <span className="chips inline">{r.skills.map((x) => <span key={x} className="pill">{x}</span>)}</span></p>}
-                {r.experienceKeywords.length > 0 && <p className="muted small">Signals: {r.experienceKeywords.join(', ')}</p>}
-              </div>
-            )}
-          </>
-        )}
-      </section>
+      <ResumeStudio title="Resume" onChange={(u) => u && sync(u)} />
+      <SocialSettings />
 
       <form className="panel" onSubmit={save}>
         <h2>What we match on</h2>
@@ -122,8 +116,7 @@ export default function Profile() {
           <div className="chips">{DOMAINS.map((d) => <button type="button" key={d} className={`chip ${interests.includes(d) ? 'on' : ''}`} aria-pressed={interests.includes(d)} onClick={() => setInterests(toggle(interests, d))}>{d}</button>)}</div>
         </fieldset>
         <div className="form-grid">
-          <label>City<input value={loc.city || ''} onChange={(e) => setLoc({ ...loc, city: e.target.value })} placeholder="e.g. Pune" /></label>
-          <label>State<input value={loc.state || ''} onChange={(e) => setLoc({ ...loc, state: e.target.value })} placeholder="e.g. Maharashtra" /></label>
+          <LocationPicker loc={loc} setLoc={setLoc} />
           <label>Education level<select value={edu.level || ''} onChange={(e) => setEdu({ ...edu, level: e.target.value })}>
             <option value="">—</option><option value="school">School</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="phd">PhD</option><option value="working">Working</option></select></label>
           <label>Graduation year<input type="number" min="1990" max="2040" value={edu.gradYear || ''} onChange={(e) => setEdu({ ...edu, gradYear: e.target.value })} /></label>
@@ -153,6 +146,57 @@ export default function Profile() {
         <button className="btn primary" disabled={busy}>Save profile</button>
       </form>
       <Security />
+    </>
+  );
+}
+
+// State first, then the cities of that state. "Outside India" switches to free-text country / state / city.
+function LocationPicker({ loc, setLoc }) {
+  const abroad = !!loc.country && loc.country.toLowerCase() !== 'india';
+  const derivedState = STATES.includes(loc.state) ? loc.state : stateOfCity(loc.city);
+  const state = abroad ? '__other' : derivedState;
+  const city = normaliseCity(loc.city);
+  const known = state && state !== '__other' ? INDIA[state] : [];
+  const cityIsOther = !!city && !known.includes(city);
+  const [other, setOther] = useState(cityIsOther);
+
+  const pickState = (v) => {
+    if (v === '__other') return setLoc({ ...loc, country: abroad ? loc.country : '', state: '', city: '' });
+    setOther(false);
+    setLoc({ ...loc, country: 'India', state: v, city: '' });
+  };
+  const pickCity = (v) => {
+    if (v === '__other') { setOther(true); return setLoc({ ...loc, city: '' }); }
+    setOther(false); setLoc({ ...loc, city: v });
+  };
+
+  return (
+    <>
+      <label>State / union territory
+        <select value={state} onChange={(e) => pickState(e.target.value)}>
+          <option value="">Select your state</option>
+          {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          <option value="__other">Outside India</option>
+        </select>
+      </label>
+      {state === '__other' ? (
+        <>
+          <label>Country<input value={loc.country || ''} onChange={(e) => setLoc({ ...loc, country: e.target.value })} placeholder="e.g. Bangladesh" /></label>
+          <label>State / region<input value={loc.state || ''} onChange={(e) => setLoc({ ...loc, state: e.target.value })} /></label>
+          <label>City<input value={loc.city || ''} onChange={(e) => setLoc({ ...loc, city: e.target.value })} placeholder="e.g. Dhaka" /></label>
+        </>
+      ) : (
+        <>
+          <label>City
+            <select value={other ? '__other' : known.includes(city) ? city : ''} onChange={(e) => pickCity(e.target.value)} disabled={!state}>
+              <option value="">{state ? 'Select your city' : 'Choose a state first'}</option>
+              {known.map((c) => <option key={c} value={c}>{c}</option>)}
+              {state && <option value="__other">Other city…</option>}
+            </select>
+          </label>
+          {other && state && <label>Your city<input value={loc.city || ''} onChange={(e) => setLoc({ ...loc, city: e.target.value })} placeholder={`City in ${state}`} /></label>}
+        </>
+      )}
     </>
   );
 }

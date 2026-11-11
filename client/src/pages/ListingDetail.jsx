@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { closes, inr, prizeText } from '../components.jsx';
+import HackathonAgent from '../HackathonAgent.jsx';
+import AddToCalendar from '../AddToCalendar.jsx';
+import { useToast } from '../toast.jsx';
 
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const KIND = { registration: 'Registration closes', submission: 'Submissions close', event_start: 'Starts (register before)', event_end: 'Ends' };
@@ -13,6 +16,7 @@ export default function ListingDetail() {
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(null);
+  const toast = useToast();
   useEffect(() => { api.listing(id).then((r) => { setD(r.listing); setSaved(r.saved); }).catch((e) => setError(e.message)); }, [id]);
 
   if (error) return <div className="empty"><h2>Listing not available</h2><p>{error}. It may have closed.</p><Link to="/">Back to browse</Link></div>;
@@ -28,9 +32,9 @@ export default function ListingDetail() {
       <h1>{d.title}</h1>
       <p className="muted">{d.organiser || 'Organiser'} · listed on {d.platform}{d.alsoOn?.length ? <> · also on {d.alsoOn.map((a, i) => <span key={a.url}>{i ? ', ' : ''}<a href={a.url} target="_blank" rel="noreferrer noopener">{a.platform}</a></span>)}</> : null}</p>
       <div className="detail-actions">
-        <a className="btn primary" href={d.url} target="_blank" rel="noreferrer noopener">Register on {d.platform} ↗</a>
+        <a className="btn primary" href={d.url} target="_blank" rel="noreferrer noopener" onClick={() => { if (user) api.registered(d.id).then((r) => { setSaved({ status: r.saved.status }); toast(`Added to your tracker as ${r.saved.status}`, 'good'); }).catch(() => {}); }}>Register on {d.platform} ↗</a>
         {user && <button className="btn ghost" onClick={toggle} aria-pressed={!!saved}>{saved ? `★ In tracker (${saved.status})` : '☆ Save to tracker'}</button>}
-        <a className="btn ghost" href={`/api/listings/calendar.ics?ids=${d.id}`}>Add to calendar</a>
+        <AddToCalendar listing={d} />
       </div>
       <dl className="facts">
         <div><dt>{KIND[d.deadlineKind] || 'Deadline'}</dt><dd>{fmt(d.deadline)}</dd></div>
@@ -46,6 +50,7 @@ export default function ListingDetail() {
       {d.skills?.length > 0 && <p><b>Skills:</b> {d.skills.map((s) => <span key={s} className="pill">{s}</span>)}</p>}
       {d.tags?.length > 0 && <p><b>Themes:</b> {d.tags.map((t) => <span key={t} className="pill">{t}</span>)}</p>}
       {d.description && <section className="panel"><h2>About</h2><p>{d.description}</p></section>}
+      <HackathonAgent listing={d} />
       <p className="small muted">Details are copied from {d.platform}; the organiser’s page is the source of truth.{d.prize?.inr && d.prize.currency && d.prize.currency !== 'INR' ? ` Rupee amount is an estimate (${inr(d.prize.inr)}).` : ''}</p>
     </article>
   );

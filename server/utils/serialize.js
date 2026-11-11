@@ -26,7 +26,9 @@ const publicUser = (u) => ({
   skills: u.skills,
   interests: u.interests,
   preferences: u.preferences,
-  notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch },
+  privacy: { shareQuestions: u.privacy?.shareQuestions !== false },
+  social: { discoverable: !!u.social?.discoverable, headline: u.social?.headline || '', lookingForTeam: !!u.social?.lookingForTeam },
+  notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch, emailReminders: !!u.notify?.emailReminders, emailSocial: u.notify?.emailSocial !== false },
   resume: u.resume?.parsedAt
     ? {
         fileName: u.resume.fileName,

@@ -1,0 +1,10 @@
+{
+  "name": "HackElite",
+  "short_name": "HackElite",
+  "description": "Live hackathons and competitions, ranked against your resume.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

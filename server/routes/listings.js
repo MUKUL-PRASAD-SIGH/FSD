@@ -85,31 +85,15 @@ router.get('/stats', asyncRoute(async (_req, res) => {
   });
 }));
 
-// Calendar feed: add every deadline to Google/Apple/Outlook calendars (with a day-before alarm)
+// Public deadlines feed (not personalised; signed-in users get their own live feed from /api/calendar)
 router.get('/calendar.ics', asyncRoute(async (req, res) => {
+  const cal = require('../services/calendar');
   const ids = (req.query.ids || '').split(',').filter(Boolean);
   const filter = ids.length ? { _id: { $in: ids.filter((i) => /^[a-f0-9]{24}$/i.test(i)) }, status: 'published', deadline: { $gte: new Date() } } : buildFilter(req.query);
   const rows = await Listing.find(filter).sort({ deadline: 1 }).limit(300).lean();
-  const fmt = (d) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const esc2 = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\r?\n/g, '\\n');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//HackElite//Deadlines//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:HackElite deadlines'];
-  for (const l of rows) {
-    lines.push(
-      'BEGIN:VEVENT',
-      `UID:${l._id}@hackelite`,
-      `DTSTAMP:${fmt(new Date())}`,
-      `DTSTART:${fmt(l.deadline)}`,
-      `DTEND:${fmt(new Date(new Date(l.deadline).getTime() + 3600000))}`,
-      `SUMMARY:${esc2(`Deadline: ${l.title}`)}`,
-      `DESCRIPTION:${esc2(`${l.organiser} on ${l.platform}. Register: ${l.url}`)}`,
-      `URL:${l.url}`,
-      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Deadline tomorrow', 'TRIGGER:-P1D', 'END:VALARM',
-      'END:VEVENT'
-    );
-  }
-  lines.push('END:VCALENDAR');
-  res.set({ 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="hackelite-deadlines.ics"' });
-  res.send(lines.join('\r\n'));
+  const body = cal.buildCalendar({ name: 'HackElite deadlines', description: 'Open hackathon and competition deadlines', events: rows.flatMap((l) => cal.eventsFor(l)), refreshMinutes: 120 });
+  res.set({ 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'inline; filename="hackelite-deadlines.ics"' });
+  res.send(body);
 }));
 
 router.get('/:id', optionalAuth, asyncRoute(async (req, res) => {
