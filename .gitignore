@@ -40,3 +40,4 @@ Thumbs.db
 .data-db.log
 .data-*.log
 .data-api.err
+reference/
