@@ -3,6 +3,9 @@
 // Use a managed MongoDB (Atlas) or docker-compose for anything beyond local development.
 const path = require('path');
 const fs = require('fs');
+// Cache the downloaded mongod binary in ONE fixed place (server/node_modules/.cache), whatever directory npm was started from.
+// Without this, running `npm run db` from the repo root would look for it elsewhere and download ~600 MB (Windows) all over again.
+process.env.MONGOMS_DOWNLOAD_DIR = process.env.MONGOMS_DOWNLOAD_DIR || path.join(__dirname, '..', 'node_modules', '.cache', 'mongodb-memory-server');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 (async () => {
