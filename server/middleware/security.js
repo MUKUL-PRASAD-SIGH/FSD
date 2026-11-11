@@ -18,6 +18,7 @@ const globalLimiter = (req, res, next) => (FEED.test(req.path) ? next() : baseGl
 const feedLimiter = limiter(60 * 1000, 3000, 'Calendar feed is being requested too often.');
 const authLimiter = limiter(15 * 60 * 1000, 30, 'Too many sign-in attempts. Try again in a few minutes.');
 const heavyLimiter = limiter(60 * 1000, 20, 'Too many requests to this feature. Wait a minute.');
+const messageLimiter = limiter(60 * 1000, 120, 'You are sending messages too fast. Slow down a little.');
 
 function applySecurity(app) {
   app.disable('x-powered-by');
@@ -41,4 +42,4 @@ function applySecurity(app) {
   app.use(globalLimiter);
 }
 
-module.exports = { applySecurity, authLimiter, heavyLimiter, feedLimiter };
+module.exports = { applySecurity, authLimiter, heavyLimiter, feedLimiter, messageLimiter };

@@ -15,7 +15,8 @@ const errorHandler = (err, req, res, _next) => {
   if (err.type === 'entity.too.large') { status = 413; message = 'Request body too large'; }
   if (err.type === 'entity.parse.failed') { status = 400; message = 'Malformed JSON'; }
   if (status >= 500) console.error(`${req.method} ${req.originalUrl}:`, err);
-  res.status(status).json({ error: message });
+  const code = status < 500 && typeof err.code === 'string' && /^[A-Z_]{3,40}$/.test(err.code) ? err.code : undefined;
+  res.status(status).json(code ? { error: message, code } : { error: message });
 };
 
 module.exports = { asyncRoute, notFound, errorHandler };
