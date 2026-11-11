@@ -13,6 +13,11 @@ import Admin from './pages/Admin.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
 import Notifications, { Bell, useNotifications } from './pages/Notifications.jsx';
 import { Login, Register, Forgot, Reset, Verify } from './pages/Auth.jsx';
+import Network from './pages/Network.jsx';
+import Teams from './pages/Teams.jsx';
+import TeamPage from './pages/TeamPage.jsx';
+import Chat from './pages/Chat.jsx';
+import { useRealtime } from './realtime.jsx';
 import { api } from './api.js';
 import { useToast } from './toast.jsx';
 
@@ -46,6 +51,7 @@ function VerifyBanner() {
 
 export default function App() {
   const { user, ready, logout, isPro } = useAuth();
+  const { counts } = useRealtime();
   const [notes, reloadNotes] = useNotifications(!!user);
   const link = ({ isActive }) => (isActive ? 'active' : '');
   const g = (roles, el) => <Guard roles={roles}>{el}</Guard>;
@@ -61,6 +67,9 @@ export default function App() {
           <NavLink to="/ask" className={link}>Ask</NavLink>
           {user && <NavLink to="/assistant" className={link}>Assistant{!isPro && <span className="pill tiny">Pro</span>}</NavLink>}
           {user && <NavLink to="/tracker" className={link}>Tracker</NavLink>}
+          {user && <NavLink to="/network" className={link}>Network{counts.pending > 0 && <b className="badge static">{counts.pending}</b>}</NavLink>}
+          {user && <NavLink to="/teams" className={link}>Teams</NavLink>}
+          {user && <NavLink to="/chat" className={link}>Chat{counts.chat > 0 && <b className="badge static">{counts.chat > 9 ? '9+' : counts.chat}</b>}</NavLink>}
           {user?.role === 'lister' && <NavLink to="/lister" className={link}>My events</NavLink>}
           {user?.role === 'admin' && <NavLink to="/admin" className={link}>Admin</NavLink>}
         </nav>
@@ -96,6 +105,11 @@ export default function App() {
             <Route path="/for-you" element={g(null, <ForYou />)} />
             <Route path="/assistant" element={g(null, <Assistant />)} />
             <Route path="/tracker" element={g(null, <Tracker />)} />
+            <Route path="/network" element={g(null, <Network />)} />
+            <Route path="/teams" element={g(null, <Teams />)} />
+            <Route path="/teams/:id" element={g(null, <TeamPage />)} />
+            <Route path="/chat" element={g(null, <Chat />)} />
+            <Route path="/chat/:roomId" element={g(null, <Chat />)} />
             <Route path="/notifications" element={g(null, <Notifications />)} />
             <Route path="/plan" element={g(null, <Plan />)} />
             <Route path="/profile" element={g(null, <Profile />)} />
