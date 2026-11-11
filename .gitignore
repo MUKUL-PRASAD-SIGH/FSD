@@ -36,3 +36,7 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+.data/
+.data-db.log
+.data-*.log
+.data-api.err

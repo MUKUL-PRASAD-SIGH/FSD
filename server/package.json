@@ -10,11 +10,13 @@
     "ingest": "node services/ingest/run.js",
     "test": "node --test --test-concurrency=1",
     "sources:check": "node scripts/source-check.js",
-    "integrations:check": "node scripts/check-integrations.js"
+    "integrations:check": "node scripts/check-integrations.js",
+    "db": "node scripts/dev-db.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.21.2",
@@ -27,5 +29,8 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^10.3.1",
     "pdf-parse": "1.1.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.4.3"
   }
 }
