@@ -8,7 +8,7 @@ const User = require('../models/User');
 const { embed, cosine, activeModel } = require('./embeddings');
 const { recommend, userProfile } = require('./recommender');
 const { config } = require('../config/env');
-const { parseAsk, matchesFilter } = require('./askParser');
+const { parseAsk, matchesFilter, matchesPlace } = require('./askParser');
 
 const listingDoc = (l) =>
   [l.title, l.organiser, l.type, l.mode, l.city, (l.tags || []).join(', '), (l.skills || []).join(', '), (l.eligibility || []).join(', '), (l.description || '').slice(0, 500)]
@@ -84,7 +84,7 @@ async function retrieve(user, question, { k = 6 } = {}) {
   // Hard constraints stated in the question ("online", "closing this week", "1L+ prize") narrow the pool first;
   // if that leaves almost nothing we fall back to the full pool rather than answer from nothing.
   const parsed = parseAsk(question);
-  const narrowed = all.filter((l) => matchesFilter(l, parsed.filter));
+  const narrowed = all.filter((l) => matchesFilter(l, parsed.filter) && matchesPlace(l, parsed.place));
   const pool = narrowed.length >= 3 ? narrowed : all;
   const constraints = narrowed.length >= 3 ? parsed.applied : [];
   const { model, vectors } = await embed([question]);
