@@ -74,6 +74,28 @@ Similarity search is an in-process cosine scan over a few thousand vectors — a
 ## 6. Security architecture
 See [SECURITY.md](SECURITY.md). Principle: **authorisation is always enforced on the server**; the client only hides things.
 
+## 5b. Per-event agent ("Ask this hackathon")
+Every listing page has an agent that answers questions about that one event.
+1. **Crawl on demand** (`services/pageAgent.js`): when a signed-in user asks, the server reads the event's own URL through `utils/safeFetch.js` (see SECURITY.md), honouring `robots.txt`, and caches the extracted passages in `listingpages` (MongoDB TTL index: 6 h on success, 10 min on failure) so repeat questions don't hit the organiser's site.
+2. **Extract**: cheerio drops scripts/nav/forms, keeps headings + paragraphs/list items/table cells, meta description and schema.org `Event` JSON-LD, and splits them into passages. Pages that render only with JavaScript (Unstop, many Devfolio sites) are detected and reported honestly.
+3. **Context** = page passages + the stored listing record split into one passage per fact (deadline, prize, eligibility, team size…). Nothing from other events or other users is ever in the context.
+4. **Retrieve** with embeddings + question-word coverage + an intent boost (eligibility/prize/deadline/team/fee/location questions favour the matching record fact).
+5. **Answer**: Gemini if `GEMINI_API_KEY` is set (system prompt: answer only from context, cite, ignore instructions in the page), otherwise an extractive answer quoting passages. If nothing matches it says so and lists what is known. Sources are returned with every answer.
+6. **Multi-page crawl** (`services/siteCrawler.js`): beyond the event URL it follows up to 6 same-host links to official info pages (FAQ, rules, schedule, prizes…), never user-generated areas, one request/second, `robots.txt` + `Crawl-delay` per URL, and extracts published Q&A. Policy: [CRAWLER.md](CRAWLER.md).
+7. **Question analytics** (`services/communityQuestions.js`): your own history (`userqueries`, private, 180-day TTL, deleted with the account) is separate from an anonymous tally (`listingquestions`: no user id; PII-scrubbed; shown only at 2+ asks; opt-out via `privacy.shareQuestions`). Organisers see the aggregate for their own events via `GET /api/lister/listings/:id/questions`.
+Endpoints: `POST /api/listings/:id/ask`, `GET|DELETE /api/listings/:id/ask/history`, `GET /api/listings/:id/questions` (all sign-in required, `no-store`).
+
+## 6b. Operations and deployment
+- **Request pipeline** (`server.js`): request id → security headers/CORS/rate limit → gzip → access log → `Cache-Control: private, no-store` on every personalised route (`/me`, `/auth`, `/ask`, `/assistant`, `/plan`, `/lister`, `/admin`) → body parsing and sanitising → routers → error handler (no stack traces to clients).
+- **Health**: `/api/health` is liveness; `/api/health/ready` returns 503 until MongoDB is connected, so an orchestrator only routes traffic to a working instance. The Docker `HEALTHCHECK` uses it.
+- **Graceful shutdown**: SIGTERM/SIGINT stop accepting connections, drain in-flight requests, close MongoDB, then exit (hard stop after 10 s).
+- **Ingestion safety**: syncs never overlap inside a process; run **one** API instance until jobs move to a worker (see table below).
+- **Packaging**: `Dockerfile` (multi-stage, non-root, serves API + built client) and `docker-compose.yml` (app + MongoDB 7 with a volume and health-gated start). CI (`.github/workflows/ci.yml`) runs the full suite against a Mongo service, `npm audit`, and the client build.
+- **Local MongoDB**: no install needed, `cd server && npm run db` starts a real persistent mongod on 27017 (data in `.data/mongo`).
+
+## 6c. Privacy model for recommendations
+Every recommendation query is derived from `req.user` (the verified JWT subject) and nothing else: profile, resume chunks and embeddings are read by `User.findById(req.user._id)`; saved items and notifications are filtered by `user: req.user._id`; no route accepts a user id from the client. Resume text/chunks are `select: false` and are never serialised. Personalised responses are `no-store` so a shared cache can't serve one user's picks to another. `server/tests/e2e.test.js` ("personal data is private") proves two users with different resumes never see each other's data.
+
 ## 7. Scaling and trade-offs
 
 | Concern | Today | At larger scale |
@@ -85,6 +107,6 @@ See [SECURITY.md](SECURITY.md). Principle: **authorisation is always enforced on
 | Sessions | stateless JWT + `tokenVersion` | add refresh tokens + short access TTL; move token to an httpOnly cookie with CSRF protection |
 | Ingestion | unofficial public endpoints | official partner APIs / feeds where available |
 | Billing | key-based activation | payment provider webhook sets `plan.tier` |
-| Observability | console logs + audit collection | structured logging, metrics, alerting |
+| Observability | request ids (`X-Request-Id`), one JSON access log line per request in production, `/api/health` (liveness) and `/api/health/ready` (readiness), audit collection | ship logs to a pipeline, add metrics (Prometheus) and alerting |
 
 Deliberate simplifications: no email verification flow, no CAPTCHA, no password-breach lookup, single-region, single Mongo node.

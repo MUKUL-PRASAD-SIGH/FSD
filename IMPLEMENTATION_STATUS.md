@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last verified: 2 Nov 2026 (takeover). Test evidence: [TEST_REPORT.md](TEST_REPORT.md). Sources: [SOURCE_COVERAGE_REPORT.md](SOURCE_COVERAGE_REPORT.md). Setup: [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md). Brabble comparison: [BRABBLE_PARITY_REPORT.md](BRABBLE_PARITY_REPORT.md)._
+_Last verified: 11 Nov 2026 (60/60 tests against a real MongoDB; live ingest: ~944 listings from 10 sources). Test evidence: [TEST_REPORT.md](TEST_REPORT.md). Sources: [SOURCE_COVERAGE_REPORT.md](SOURCE_COVERAGE_REPORT.md). Setup: [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md). Brabble comparison: [BRABBLE_PARITY_REPORT.md](BRABBLE_PARITY_REPORT.md)._
 
 ## 1. Fully implemented and verified
 Run in this session with automated tests and/or browser journeys.
@@ -23,6 +23,13 @@ Run in this session with automated tests and/or browser journeys.
 | Admin console: source coverage dashboard, integrations check, listers, users, plans, roles, listing moderation, audit log, notifier | e2e tests; journey 14 |
 | Responsive layout (390 px, no horizontal page scroll), dark/light theme, skeleton/empty/error states | journey 16; screenshots |
 | Single-process production serving (`SERVE_CLIENT=true`) with a hash-based CSP for the SPA | e2e test; Chromium check |
+| Email verification (soft, banner + `/verify`), breached-password rejection, installable PWA manifest | e2e tests; browser |
+| **Multi-page event crawler** (official info pages + published FAQ, robots/Crawl-delay, 1 req/s, no user-generated areas) and **anonymous question analytics** (private history, opt-out tally, organiser insight) | `crawler.test.js` (9 tests); policy in docs/CRAWLER.md |
+| **Ask this hackathon**: per-event agent that crawls the event's own page (SSRF-safe, robots-aware, cached in MongoDB) and answers only from it with sources | `page-agent.test.js`; live runs on Unstop, MLH and Devfolio listings |
+| **Resume Studio** (For you page): drag-and-drop upload → parsed skills, inferred interests with scores, graduation year → picks refresh instantly; private to the user | browser run with `resume.pdf` fixture |
+| **Privacy isolation** of recommendations/resume/saved/notifications between users; `no-store` on personalised responses | e2e test "personal data is private" |
+| **Production ops**: request ids, JSON access logs, gzip, readiness probe, graceful shutdown, non-overlapping ingest, Dockerfile + compose, CI workflow, zero-install dev MongoDB (`npm run db`) | e2e health test; manual |
+| Redesigned UI layer: sticky glass header, gradient hero, hover-lift cards, motion (respects reduced-motion), toasts, themed light/dark | screenshots |
 | Security hardening (docs/SECURITY.md), 0 dependency vulnerabilities | e2e tests; `npm audit` |
 
 ## 2. Implemented but not externally verified
@@ -48,8 +55,7 @@ The code exists and is unit-tested where possible, but has not been run against 
 
 ## 4. Not implemented
 - Payments/billing for Pro (activation keys instead; replace the check in `server/routes/plan.js` with a payment webhook).
-- Email verification for password sign-ups.
-- CAPTCHA / breached-password check.
+- CAPTCHA.
 - Background worker separation (jobs run in the API process: run one instance).
 - Native mobile app / PWA / push notifications.
 
@@ -62,6 +68,8 @@ The code exists and is unit-tested where possible, but has not been run against 
 | Push to GitHub refused (Claude GitHub App has no access to `mukundgaur06/FSD_PROJ`) | Reconnect GitHub / install the app; the commits are on the local branch |
 
 ## Known limitations
+- **Per-event agent coverage**: pages rendered only by JavaScript (Unstop, many Devfolio sites) yield just the stored listing data, and sites that block bots (Devpost answers HTTP 403) are not bypassed. The agent says so in the answer. A headless-browser fetch would widen coverage but is heavier and raises robots/ToS questions.
+- **DoraHacks** sits behind a bot-verification wall (checked 11 Nov 2026). We don't bypass it, so the source shows as *skipped* on Admin → Sources until `DORAHACKS_API_URL` points at an authorised endpoint. **ETHGlobal** is fixed: the parser now reads the live card layout (4 upcoming events at time of writing). Kaggle and clist need free keys.
 - Third-party endpoints are unofficial except Codeforces, Kaggle, clist and Topcoder; any can change. A failing source shows on Admin → Sources and never blocks the others.
 - Prize rupee values for foreign currencies are estimates (`USD_TO_INR`, `EUR_TO_INR`, `GBP_TO_INR`); the original amount is always shown.
 - JWT is stored in `localStorage` (see docs/SECURITY.md for mitigations).

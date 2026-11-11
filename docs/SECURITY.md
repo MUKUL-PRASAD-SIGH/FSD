@@ -6,7 +6,7 @@ Every control below is either covered by an automated test (✅ test) or is conf
 
 | Area | Control | Where | Verified |
 |---|---|---|---|
-| **Passwords** | ≥ 10 chars, upper+lower, digit, symbol; blocks common words *with decorations* (`Password123!`, `P@ssw0rd2026!`), sequences, and your own name/email; max 128; **bcrypt cost 12** | `utils/password.js`, `models/User.js` | ✅ test |
+| **Passwords** | ≥ 10 chars, upper+lower, digit, symbol; rejects passwords found in known breaches (see below); max 128; **bcrypt cost 12** | `utils/password.js`, `models/User.js` | ✅ test |
 | **Brute force** | 5 failures → 15-min lock (even correct password refused); auth endpoints limited to 30 / 15 min / IP | `routes/auth.js`, `middleware/security.js` | ✅ test (lockout, 429) |
 | **Account enumeration** | identical login error for unknown vs wrong password; dummy bcrypt for unknown emails; `forgot` always answers the same | `routes/auth.js` | ✅ test |
 | **Sessions** | JWT HS256, 7 d, algorithm pinned; carries `tokenVersion` → password change, "sign out everywhere", disable and role change revoke all tokens at once | `middleware/auth.js` | ✅ test |
@@ -24,13 +24,21 @@ Every control below is either covered by an automated test (✅ test) or is conf
 | **Error handling** | no stack traces or internals returned; 5xx logged server-side only | `utils/http.js` | ✅ test |
 | **Audit** | register, login, lockout, Google link, password change/reset, plan changes, lister decisions, listing create/update/delete, user changes, account deletion | `services/audit.js`, `models/AuditLog.js` | ✅ test |
 | **Privacy** | vectors, resume text and hashes never serialised to clients; account deletion removes user, saved items and notifications and unpublishes listings; resume data removable separately | `utils/serialize.js`, `routes/auth.js` | ✅ test |
+| **Breached passwords** | register / change / reset reject passwords found in known breaches; only a 5-char SHA-1 prefix leaves the server; fails open | `utils/breached.js` | ✅ test |
+| **Email verification** | hashed single-use 24 h token, rate-limited, audited | `routes/auth.js` | ✅ test |
+| **SSRF-safe crawling** | the per-event agent fetches third-party URLs: http(s) only, no credentials, ports 80/443 only, hostname resolved by the server and every address must be public (loopback/private/link-local/CGNAT/metadata/IPv6 incl. IPv4-mapped refused), connection pinned to the vetted address (no DNS rebinding), redirects re-validated per hop (max 4), 12 s / 1.5 MB / text-only caps, robots.txt honoured | `utils/safeFetch.js` | ✅ test (incl. redirect to 169.254.169.254) |
+| **Crawler conduct** | robots.txt + Crawl-delay per URL, ≥1 s per host, ≤6 same-host pages, user-generated/personal-data paths never fetched, PII masked in stored text | `services/siteCrawler.js`, `utils/pii.js` | ✅ test (robots-blocked, forum and participant pages never requested) |
+| **Query privacy** | private per-user history (own-only read, delete, cascade on account deletion, TTL); anonymous tally with no identifiers, PII-scrubbed, k≥2 display, opt-out; organiser sees aggregate only | `models/UserQuery.js`, `models/ListingQuestion.js` | ✅ test |
+| **Untrusted page content** | event pages are treated as data: the model has no tools, the prompt forbids following instructions inside the page, answers are limited to one listing's context | `services/pageAgent.js` | ✅ test (injection text is not followed) |
+| **Cache isolation** | every personalised route sends `Cache-Control: private, no-store` and `Vary: Authorization`; responses carry an `X-Request-Id` for tracing | `middleware/ops.js` | ✅ test |
+| **Recommendation privacy** | picks, resume analysis, saved items and notifications are keyed on the verified token subject; no endpoint takes a user id; one user's resume never influences another's results | `routes/me.js`, `services/rag.js` | ✅ test (two users, different resumes) |
 | **LLM safety** | assistant answers only from retrieved context; listing text is untrusted; no tools/actions are exposed to the model | `services/rag.js` | ✅ test (injection text in a listing is not followed) |
 
 ## Known gaps and residual risks (honest list)
 
 1. **JWT in `localStorage`** is readable by any XSS. Mitigations present: React escapes output, strict CSP on the API, no `dangerouslySetInnerHTML`, external links use `rel="noopener noreferrer"`. For a hardened deployment, move to an httpOnly+SameSite cookie with CSRF tokens and serve the SPA with its own CSP.
-2. **No email verification** for password sign-ups (Google accounts are verified by Google). Anyone can register an address they don't own. Add a verification email once SMTP is configured.
-3. **No CAPTCHA / no breached-password lookup (HIBP).** Rate limiting and lockout reduce but don't eliminate credential stuffing. Lockout can be used to annoy a specific user (account-lockout DoS); the IP limiter is the counterweight.
+2. **Email verification is soft**: sign-up sends a single-use, hashed, 24 h link and the UI nags until verified, but unverified users can still sign in. Make it a hard requirement for listers/Pro if abuse appears.
+3. **No CAPTCHA.** Breached passwords are rejected (Pwned Passwords k-anonymity range API, fails open if unreachable). Rate limiting and lockout reduce but don't eliminate credential stuffing. Lockout can be used to annoy a specific user (account-lockout DoS); the IP limiter is the counterweight.
 4. **Rate limits are per process memory** — use a shared store behind multiple instances. `trust proxy` must be set to your real proxy hop count in production.
 5. **TLS is not terminated by the app.** Run behind HTTPS (reverse proxy / platform). HSTS is enabled only when `NODE_ENV=production`.
 6. **Unofficial third-party endpoints** are fetched server-side (fixed hosts only, no user-supplied URLs → no SSRF surface). They can change or disappear.
