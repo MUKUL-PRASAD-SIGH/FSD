@@ -316,3 +316,11 @@ test('dorahacks is skipped (not failed) while its bot wall blocks automated acce
   assert.match(g.reason, /bot verification/);
 });
 
+test('HTML entities in platform text are decoded (named, decimal, hex) in every stored text field', () => {
+  const { decodeEntities } = require('../services/ingest/parse');
+  assert.equal(decodeEntities('BuildLab 2026 &mdash; Pro &amp; Co &#8217;s &#x2014; &nbsp;ok'), 'BuildLab 2026 — Pro & Co ’s —  ok');
+  assert.equal(decodeEntities('&unknownentity; stays'), '&unknownentity; stays');
+  const v = validate({ title: 'Hack &amp; Build &mdash; 2026', description: 'Fun &mdash; time', city: 'Science &amp; Technology Building', url: 'https://x.example/e', deadline: new Date(NOW.getTime() + 3 * DAY) }, { now: NOW });
+  assert.equal(v.status, 'valid');
+  assert.deepEqual([v.item.title, v.item.description, v.item.city], ['Hack & Build — 2026', 'Fun — time', 'Science & Technology Building']);
+});
