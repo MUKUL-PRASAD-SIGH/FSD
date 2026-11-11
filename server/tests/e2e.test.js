@@ -412,7 +412,7 @@ test('public listings API, calendar feed, saved tracker', async () => {
   assert.equal(saved.body.saved[0].status, 'applied');
   assert.equal((await call('PUT', '/api/me/saved/not-an-id', { token: t, body: {} })).status, 404);
   const ics = await fetch(`${base}/api/listings/calendar.ics?ids=${id}`);
-  assert.match(await ics.text(), /BEGIN:VEVENT[\s\S]*TRIGGER:-P1D/);
+  assert.match(await ics.text(), /BEGIN:VEVENT[\s\S]*TRIGGER:-PT1440M/); // default one-day reminder, expressed in minutes
   assert.equal((await call('GET', '/api/listings/stats')).body.open >= 3, true);
   const ask = await call('POST', '/api/ask', { body: { question: 'offline hackathons in pune' } });
   assert.equal(ask.status, 200);
