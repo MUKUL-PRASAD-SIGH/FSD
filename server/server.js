@@ -27,6 +27,9 @@ function buildApp() {
   });
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/calendar', require('./routes/calendar'));
+  app.use('/api/network', require('./routes/network'));
+  app.use('/api/teams', require('./routes/teams'));
+  app.use('/api/chat', require('./routes/chat'));
   app.use('/api/listings', require('./routes/listingAgent'));
   app.use('/api/listings', require('./routes/listings'));
   app.use('/api/me', require('./routes/me'));
@@ -105,6 +108,7 @@ async function start() {
   await ensureAdmin();
   const app = buildApp();
   const server = app.listen(config.port, () => console.log(`API listening on http://localhost:${config.port}`));
+  require('./services/realtime').init(server); // live chat and notifications (Socket.IO on the same port)
 
   if (!config.disableIngest) {
     const { runAll } = require('./services/ingest/run');
@@ -119,13 +123,21 @@ async function start() {
     setTimeout(tick, 3000).unref();
     setInterval(tick, (Number(process.env.INGEST_INTERVAL_MIN) || 60) * 60 * 1000).unref();
   }
+  // Email reminders for tracked deadlines (opt-in per user). Same single-instance caveat as ingestion.
+  if (!config.disableIngest) {
+    const { runReminders } = require('./services/reminders');
+    let reminding = false;
+    const remind = async () => { if (reminding) return; reminding = true; try { const r = await runReminders(); if (r.sent) console.log('reminders sent:', r.sent); } catch (e) { console.error('reminders error', e.message); } finally { reminding = false; } };
+    setTimeout(remind, 45000).unref();
+    setInterval(remind, 15 * 60 * 1000).unref();
+  }
   // Graceful shutdown: stop accepting, let in-flight requests finish, close MongoDB, then exit (hard stop after 10 s).
   let closing = false;
   const shutdown = (sig) => {
     if (closing) return; closing = true;
     console.log(`${sig} received, shutting down`);
     setTimeout(() => process.exit(1), 10000).unref();
-    server.close(async () => { try { await mongoose.disconnect(); } finally { process.exit(0); } });
+    server.close(async () => { try { await require('./services/realtime').close(); await mongoose.disconnect(); } finally { process.exit(0); } });
   };
   process.on('SIGTERM', () => shutdown('SIGTERM')); process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e));

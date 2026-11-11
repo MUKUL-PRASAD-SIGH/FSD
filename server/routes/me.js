@@ -56,10 +56,17 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof p.willingToTravel === 'boolean') u.preferences.willingToTravel = p.willingToTravel;
     if (p.minPrizeInr != null) u.preferences.minPrizeInr = Math.min(1e8, Math.max(0, Number(p.minPrizeInr) || 0));
   }
+  if (b.social && typeof b.social === 'object') {
+    if (typeof b.social.discoverable === 'boolean') u.social.discoverable = b.social.discoverable;
+    if (typeof b.social.lookingForTeam === 'boolean') u.social.lookingForTeam = b.social.lookingForTeam;
+    if (typeof b.social.headline === 'string') u.social.headline = str(b.social.headline, 120);
+  }
   if (b.privacy && typeof b.privacy === 'object' && typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
   if (b.notify && typeof b.notify === 'object') {
     if (typeof b.notify.inApp === 'boolean') u.notify.inApp = b.notify.inApp;
     if (typeof b.notify.email === 'boolean') u.notify.email = b.notify.email;
+    if (typeof b.notify.emailReminders === 'boolean') u.notify.emailReminders = b.notify.emailReminders;
+    if (typeof b.notify.emailSocial === 'boolean') u.notify.emailSocial = b.notify.emailSocial;
     if (b.notify.minMatch != null) u.notify.minMatch = Math.min(100, Math.max(0, Number(b.notify.minMatch) || 0));
   }
   // role, plan, lister.approvalStatus and tokenVersion are deliberately NOT assignable here
@@ -145,6 +152,14 @@ router.put('/saved/:listingId', asyncRoute(async (req, res) => {
     { upsert: true, new: true, runValidators: true }
   );
   res.json({ saved: { status: row.status, note: row.note } });
+}));
+// Called when the user clicks Register on a card: tracks the hackathon as "applied" (a later stage like shortlisted/won is never downgraded)
+router.post('/saved/:listingId/registered', asyncRoute(async (req, res) => {
+  if (!(await Listing.exists({ _id: req.params.listingId, status: 'published' }).catch(() => null))) return res.status(404).json({ error: 'Listing not found' });
+  let row = await Saved.findOne({ user: req.user._id, listing: req.params.listingId });
+  if (!row) row = await Saved.create({ user: req.user._id, listing: req.params.listingId, status: 'applied' });
+  else if (row.status === 'saved') { row.status = 'applied'; await row.save(); }
+  res.json({ saved: { status: row.status } });
 }));
 router.delete('/saved/:listingId', asyncRoute(async (req, res) => {
   await Saved.deleteOne({ user: req.user._id, listing: req.params.listingId });

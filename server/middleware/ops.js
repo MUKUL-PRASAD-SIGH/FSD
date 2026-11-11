@@ -25,7 +25,7 @@ function accessLog(req, res, next) {
 
 // Anything personalised (profile, resume, recommendations, notifications, auth) must never be stored by a shared cache or the
 // browser history cache. Public listing data keeps normal caching semantics.
-const PRIVATE = /^\/api\/(me|auth|ask|assistant|plan|lister|admin|calendar\/(?:settings|token|event))(\/|$)|^\/api\/listings\/[^/]+\/(ask|ask\/history|questions)$/;
+const PRIVATE = /^\/api\/(me|auth|ask|assistant|plan|lister|admin|network|teams|chat|calendar\/(?:settings|token|event))(\/|$)|^\/api\/listings\/[^/]+\/(ask|ask\/history|questions)$/;
 function privateNoStore(req, res, next) {
   if (PRIVATE.test(req.originalUrl.split('?')[0])) {
     res.setHeader('Cache-Control', 'private, no-store, max-age=0');
