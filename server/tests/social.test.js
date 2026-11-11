@@ -228,8 +228,10 @@ test('sockets: only valid, current JWTs connect; revoked sessions are dropped', 
 
 // =====================================================================================================================
 test('private rooms: invite-only, connections only, owner controls, live membership changes', async () => {
-  const [o, m, stranger] = [await mkUser('Olga Owner'), await mkUser('Max Member'), await mkUser('Sam Stranger')];
+  const [o, m, stranger] = [await mkUser('Olga Owner', { pro: true }), await mkUser('Max Member'), await mkUser('Sam Stranger')];
   await befriend(o, m);
+  const freeTry = await call('POST', '/api/chat/rooms', { token: m.token, body: { name: 'Free room' } });
+  assert.equal(freeTry.status, 402); assert.equal(freeTry.body.code, 'PRO_REQUIRED', 'creating a private room is Pro');
   const made = await call('POST', '/api/chat/rooms', { token: o.token, body: { name: 'Study hall', invite: [m.id, stranger.id] } });
   assert.equal(made.status, 201);
   const room = made.body.roomId;
@@ -249,7 +251,7 @@ test('private rooms: invite-only, connections only, owner controls, live members
   assert.equal((await live).text, 'welcome', 'a freshly joined member receives live messages without reconnecting');
   assert.equal((await call('GET', `/api/chat/rooms/${room}`, { token: m.token })).body.room.members.length, 2);
 
-  assert.equal((await call('POST', `/api/chat/rooms/${room}/invite`, { token: m.token, body: { userId: stranger.id } })).status, 403, 'only the owner invites');
+  assert.equal((await call('POST', `/api/chat/rooms/${room}/invite`, { token: m.token, body: { userId: stranger.id } })).status, 402, 'a free member cannot invite others (hosting is Pro)');
   assert.equal((await call('POST', `/api/chat/rooms/${room}/leave`, { token: o.token })).status, 400, 'owner cannot leave');
   assert.equal((await call('DELETE', `/api/chat/rooms/${room}`, { token: m.token })).status, 403);
   const removed = waitFor(sm, 'room:removed');
@@ -262,14 +264,14 @@ test('private rooms: invite-only, connections only, owner controls, live members
 
 // =====================================================================================================================
 test('teams: invite by email (generic), accept joins team + room + tracker, capacity, ownership, disband', async () => {
-  const [owner, guest, third] = [await mkUser('Tia Owner'), await mkUser('Gus Guest'), await mkUser('Thea Third')];
+  const [owner, guest, third] = [await mkUser('Tia Owner', { pro: true }), await mkUser('Gus Guest'), await mkUser('Thea Third')];
   const listing = await mkListing('Team Hack 2026');
   const created = await call('POST', '/api/teams', { token: owner.token, body: { name: 'Pixel Pirates', listingId: String(listing._id), maxMembers: 2, lookingFor: ['react'] } });
   assert.equal(created.status, 201);
   const team = created.body.team;
   assert.equal(team.members.length, 1); assert.ok(team.room);
   assert.ok(await Saved.exists({ user: owner.id, listing: listing._id }), 'the owner tracks the hackathon');
-  assert.equal((await call('POST', '/api/teams', { token: owner.token, body: { name: 'Public one', visibility: 'public' } })).body.code, 'PRO_REQUIRED', 'public teams are Pro');
+  assert.equal((await call('POST', '/api/teams', { token: guest.token, body: { name: 'Free try' } })).body.code, 'PRO_REQUIRED', 'a free user cannot create a team (but can join one by invitation, below)');
   assert.equal((await call('POST', '/api/teams', { token: owner.token, body: { name: 'x' } })).status, 400);
 
   // invite by email: same answer for a stranger address
@@ -313,8 +315,9 @@ test('teams: invite by email (generic), accept joins team + room + tracker, capa
 });
 
 test('tracker share: one call finds or creates the team for a tracked hackathon and invites a registered person', async () => {
-  const [a, b] = [await mkUser('Sharer Sue'), await mkUser('Shared Sid')];
+  const [a, b] = [await mkUser('Sharer Sue', { pro: true }), await mkUser('Shared Sid')];
   const l = await mkListing('Share Hack');
+  assert.equal((await call('POST', '/api/teams/share', { token: b.token, body: { listingId: String(l._id), email: a.email } })).status, 402, 'sharing from the tracker (and creating the team room) is Pro');
   assert.equal((await call('POST', '/api/teams/share', { token: a.token, body: { listingId: String(l._id), email: b.email } })).status, 400, 'must be in the tracker first');
   const reg = await call('POST', `/api/me/saved/${l._id}/registered`, { token: a.token });
   assert.equal(reg.body.saved.status, 'applied', 'clicking Register tracks it as applied');
@@ -334,17 +337,47 @@ test('tracker share: one call finds or creates the team for a tracked hackathon 
 });
 
 // =====================================================================================================================
-test('Pro gating: recommendations, smart search, join requests and idea voting need Pro; basic social stays free', async () => {
-  const free = await mkUser('Fred Free');
-  const gated = [['GET', '/api/network/recommendations/teammates'], ['GET', '/api/network/recommendations/teams']];
-  for (const [m, p] of gated) { const r = await call(m, p, { token: free.token }); assert.equal(r.status, 402, p); assert.equal(r.body.code, 'PRO_REQUIRED'); }
-  const t = (await call('POST', '/api/teams', { token: free.token, body: { name: 'Free team' } })).body.team;
-  assert.equal((await call('GET', `/api/teams/${t.id}/ideas`, { token: free.token })).status, 402);
-  assert.equal((await call('POST', `/api/teams/${t.id}/request`, { token: free.token, body: {} })).status, 402);
-  assert.equal((await call('GET', '/api/network/people?q=zz', { token: free.token })).body.smart, false);
-  // everything social is free
-  assert.equal((await call('GET', '/api/chat/rooms', { token: free.token })).status, 200);
-  assert.equal((await call('POST', '/api/chat/rooms', { token: free.token, body: { name: 'Free group' } })).status, 201);
+test('plan split: hosting hackathon rooms and smart matching are Pro; connecting, DMs and joining by invitation stay free', async () => {
+  const free = await mkUser('Fred Free'); const host = await mkUser('Hope Host', { pro: true });
+  // Pro-only: recommendations
+  for (const p of ['/api/network/recommendations/teammates', '/api/network/recommendations/teams']) { const r = await call('GET', p, { token: free.token }); assert.equal(r.status, 402, p); assert.equal(r.body.code, 'PRO_REQUIRED'); }
+  // Pro-only: hosting (teams, team rooms, private rooms, invites, tracker share)
+  const l = await mkListing('Gate Hack');
+  await Saved.create({ user: free.id, listing: l._id, status: 'saved' });
+  for (const [m, p, body] of [['POST', '/api/teams', { name: 'Free team' }], ['POST', '/api/chat/rooms', { name: 'Free room' }], ['POST', '/api/teams/share', { listingId: String(l._id), email: host.email }]]) {
+    const r = await call(m, p, { token: free.token, body }); assert.equal(r.status, 402, `${m} ${p}`); assert.equal(r.body.code, 'PRO_REQUIRED');
+  }
+  assert.equal(await Team.countDocuments({ owner: free.id }), 0, 'nothing was created');
+  assert.equal((await call('GET', '/api/network/people?q=zz', { token: free.token })).body.smart, false, 'free search is name-only');
+
+  // Free: connect, DM, and join a Pro host's team by invitation (then chat in its room)
+  await befriend(free, host);
+  const dm = (await call('POST', '/api/chat/rooms/dm', { token: free.token, body: { userId: host.id } })).body.roomId;
+  assert.equal((await call('POST', `/api/chat/rooms/${dm}/messages`, { token: free.token, body: { text: 'hi from a free account' } })).status, 201, 'DMs are free');
+  const team = (await call('POST', '/api/teams', { token: host.token, body: { name: 'Hosted by Pro', listingId: String(l._id) } })).body.team;
+  assert.equal((await call('POST', `/api/teams/${team.id}/invite`, { token: host.token, body: { userId: free.id } })).status, 200);
+  const inv = (await call('GET', '/api/network/overview', { token: free.token })).body.invites.incoming[0];
+  assert.equal((await call('POST', `/api/network/invites/${inv.id}/accept`, { token: free.token })).status, 200, 'a free user can accept an invitation');
+  assert.equal((await call('POST', `/api/chat/rooms/${team.room}/messages`, { token: free.token, body: { text: 'free member in a Pro team room' } })).status, 201, 'and chat in the team room');
+  assert.equal((await call('GET', `/api/teams/${team.id}`, { token: free.token })).status, 200);
+  // ...but not the Pro extras inside it, and not hosting
+  assert.equal((await call('GET', `/api/teams/${team.id}/ideas`, { token: free.token })).status, 402);
+  assert.equal((await call('POST', `/api/teams/${team.id}/request`, { token: free.token, body: {} })).status, 402);
+  const mine = await call('GET', '/api/chat/rooms', { token: free.token }); assert.equal(mine.status, 200);
+  assert.ok(mine.body.rooms.length >= 2, 'the free user sees the DM and the team room');
+  assert.equal((await call('PUT', `/api/teams/${team.id}`, { token: free.token, body: { name: 'x' } })).status, 403, 'members cannot manage the team');
+});
+
+// A free user who already owns a team (created before this rule) keeps it, but cannot expand it
+test('grandfathering: an existing free owner keeps their team and room but cannot invite more people', async () => {
+  const old = await mkUser('Old Olly'); const pal = await mkUser('Pal Pia');
+  await User.updateOne({ _id: old.id }, { $set: { 'plan.tier': 'pro' } });
+  const team = (await call('POST', '/api/teams', { token: old.token, body: { name: 'Legacy team' } })).body.team;
+  await User.updateOne({ _id: old.id }, { $set: { 'plan.tier': 'free' } }); // later downgraded
+  assert.equal((await call('GET', `/api/teams/${team.id}`, { token: old.token })).status, 200, 'still sees the team');
+  assert.equal((await call('POST', `/api/chat/rooms/${team.room}/messages`, { token: old.token, body: { text: 'still works' } })).status, 201, 'still chats in the room');
+  const r = await call('POST', `/api/teams/${team.id}/invite`, { token: old.token, body: { email: pal.email } });
+  assert.equal(r.status, 402); assert.equal(r.body.code, 'PRO_REQUIRED');
 });
 
 test('Pro recommendations: only discoverable people, shared-tracking signal, complementary skills, blocked excluded, no private data', async () => {
@@ -452,7 +485,7 @@ test('email reminders: opt-in, verified only, on schedule, never twice, never st
 
 // =====================================================================================================================
 test('account deletion erases the social footprint and hands shared teams over', async () => {
-  const [a, b] = [await mkUser('Del Dee'), await mkUser('Keep Kim')];
+  const [a, b] = [await mkUser('Del Dee', { pro: true }), await mkUser('Keep Kim')];
   await befriend(a, b);
   const dm = (await call('POST', '/api/chat/rooms/dm', { token: a.token, body: { userId: b.id } })).body.roomId;
   await call('POST', `/api/chat/rooms/${dm}/messages`, { token: a.token, body: { text: 'bye soon' } });
