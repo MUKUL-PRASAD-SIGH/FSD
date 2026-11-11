@@ -9,7 +9,8 @@ export function useNotifications(enabled) {
     if (!enabled) return;
     load();
     const t = setInterval(load, 60000);
-    return () => clearInterval(t);
+    window.addEventListener('hackelite:notification', load);
+    return () => { clearInterval(t); window.removeEventListener('hackelite:notification', load); };
   }, [enabled, load]);
   return [data, load];
 }
