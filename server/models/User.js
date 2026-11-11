@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     resetTokenHash: { type: String, select: false },
     resetTokenExpires: { type: Date, select: false },
+    verifyTokenHash: { type: String, select: false },
+    verifyTokenExpires: { type: Date, select: false },
 
     // Profile used for recommendations
     college: { type: String, default: '', maxlength: 160 },

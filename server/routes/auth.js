@@ -12,6 +12,7 @@ const { str, isEmail, isUrl } = require('../utils/sanitize');
 const { audit } = require('../services/audit');
 const { sendMail } = require('../services/mailer');
 const google = require('../services/google');
+const { isBreached } = require('../utils/breached');
 const { config } = require('../config/env');
 
 const MAX_FAILS = 5;
@@ -49,7 +50,7 @@ router.get('/config', (_req, res) =>
 
 router.post('/password-check', authLimiter, (req, res) => {
   const { password, email, name } = req.body || {};
-  res.json(checkPassword(password, { email, name }));
+  res.json(checkPassword(password));
 });
 
 router.post('/register', authLimiter, asyncRoute(async (req, res) => {
@@ -58,8 +59,9 @@ router.post('/register', authLimiter, asyncRoute(async (req, res) => {
   const email = str(b.email, 254).toLowerCase();
   if (name.length < 2) return bad(res, 'Enter your full name');
   if (!isEmail(email)) return bad(res, 'Enter a valid email address');
-  const pw = checkPassword(b.password, { email, name });
+  const pw = checkPassword(b.password);
   if (!pw.ok) return bad(res, 'Password is too weak', 400, { problems: pw.problems });
+  if (await isBreached(b.password)) return bad(res, 'This password has appeared in a known data breach. Choose a different one.', 400, { problems: ['Appears in a known data breach'] });
 
   // Only these two roles can ever be self-selected. "admin" can never be requested through the API.
   const accountType = b.accountType === 'lister' ? 'lister' : 'user';
@@ -73,6 +75,7 @@ router.post('/register', authLimiter, asyncRoute(async (req, res) => {
 
   const user = await User.create({ name, email, password: b.password, role: accountType, lister });
   if (accountType === 'lister') await notifyAdmins(user);
+  sendVerification(user).catch((e) => console.error('mail failed', e.message));
   audit(req, 'auth.register', { actor: user, target: user._id, meta: { role: accountType } });
   res.status(201).json(session(user));
 }));
@@ -145,8 +148,9 @@ router.post('/change-password', protect, authLimiter, asyncRoute(async (req, res
   const user = await User.findById(req.user._id).select('+password');
   // Google-only accounts may set a first password without a current one
   if (user.password && !(await user.comparePassword(String(current || '')))) return bad(res, 'Current password is incorrect', 401);
-  const pw = checkPassword(password, { email: user.email, name: user.name });
+  const pw = checkPassword(password);
   if (!pw.ok) return bad(res, 'Password is too weak', 400, { problems: pw.problems });
+  if (await isBreached(password)) return bad(res, 'This password has appeared in a known data breach. Choose a different one.', 400, { problems: ['Appears in a known data breach'] });
   user.password = password; // pre-save hook hashes it and bumps tokenVersion (revokes other sessions)
   await user.save();
   audit(req, 'auth.password_change', { actor: user, target: user._id });
@@ -197,14 +201,44 @@ router.post('/reset', authLimiter, asyncRoute(async (req, res) => {
   const hash = crypto.createHash('sha256').update(String(token || '')).digest('hex');
   const user = await User.findOne({ resetTokenHash: hash, resetTokenExpires: { $gt: new Date() } }).select('+resetTokenHash +resetTokenExpires +password');
   if (!user) return bad(res, 'This reset link is invalid or has expired', 400);
-  const pw = checkPassword(password, { email: user.email, name: user.name });
+  const pw = checkPassword(password);
   if (!pw.ok) return bad(res, 'Password is too weak', 400, { problems: pw.problems });
+  if (await isBreached(password)) return bad(res, 'This password has appeared in a known data breach. Choose a different one.', 400, { problems: ['Appears in a known data breach'] });
   user.password = password;
   user.resetTokenHash = undefined; user.resetTokenExpires = undefined;
   user.failedLogins = 0; user.lockUntil = undefined;
   await user.save();
   audit(req, 'auth.password_reset', { actor: user, target: user._id });
   res.json(session(user));
+}));
+
+// ---- Email verification: single-use hashed token, 24 h. Soft requirement: unverified users can sign in, the UI nudges them. ----
+async function sendVerification(user) {
+  if (user.emailVerified) return;
+  const raw = crypto.randomBytes(32).toString('hex');
+  user.verifyTokenHash = crypto.createHash('sha256').update(raw).digest('hex');
+  user.verifyTokenExpires = new Date(Date.now() + 24 * 3600 * 1000);
+  await user.save();
+  await sendMail({ to: user.email, subject: 'Verify your HackElite email', text: `Confirm your email address (valid 24 hours):
+${config.appUrl}/verify?token=${raw}
+
+If you did not create an account, ignore this email.` });
+}
+router.post('/verify/send', protect, authLimiter, asyncRoute(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (user.emailVerified) return res.json({ ok: true, alreadyVerified: true });
+  await sendVerification(user);
+  res.json({ ok: true, message: 'Verification email sent. Check your inbox.' });
+}));
+router.post('/verify', authLimiter, asyncRoute(async (req, res) => {
+  const raw = typeof req.body?.token === 'string' ? req.body.token : '';
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  const user = await User.findOne({ verifyTokenHash: hash, verifyTokenExpires: { $gt: new Date() } }).select('+verifyTokenHash +verifyTokenExpires');
+  if (!user) return bad(res, 'This verification link is invalid or has expired', 400);
+  user.emailVerified = true; user.verifyTokenHash = undefined; user.verifyTokenExpires = undefined;
+  await user.save();
+  audit(req, 'auth.email_verified', { actor: user, target: user._id });
+  res.json({ ok: true });
 }));
 
 module.exports = router;
