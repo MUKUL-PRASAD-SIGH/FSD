@@ -1,6 +1,6 @@
 // Turns an adapter's raw record into a stored listing, or explains why it can't be stored.
 //
-// Rules (also documented in SOURCE_COVERAGE_REPORT.md):
+// Rules (also documented in docs/reports/SOURCE_COVERAGE_REPORT.md):
 //   REJECT  missing_title      no usable title
 //   REJECT  invalid_url        no http(s) link a student could follow
 //   REJECT  missing_date       no deadline, start date or end date at all (we cannot tell if it is still open)

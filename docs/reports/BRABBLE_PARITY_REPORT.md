@@ -1,5 +1,7 @@
 # Brabble.ai parity report
 
+> **Historical report.** A snapshot from the November 2026 takeover audit, kept for the record. The current state is in [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md); the live test suite is described in [TESTING](../TESTING.md).
+
 _2 Nov 2026._
 
 ## Status of the comparison: blocked

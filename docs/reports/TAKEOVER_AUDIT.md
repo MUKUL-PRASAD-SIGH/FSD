@@ -1,5 +1,7 @@
 # Takeover audit
 
+> **Historical report.** A snapshot from the November 2026 takeover audit, kept for the record. The current state is in [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md); the live test suite is described in [TESTING](../TESTING.md).
+
 _Audit date: 2 Nov 2026. Branch `claude/hackelite-ai-takeover-52nqbg`, starting from `7b536ab` (merge of PR #3)._
 _Everything marked "verified" below was run in this session. Anything else says why it could not be._
 
@@ -31,7 +33,7 @@ Issues met while installing:
 - Layout: `server/` (Express + Mongoose), `client/` (React + Vite), `docs/` (ARCHITECTURE, SECURITY), `old/` (previous project, untouched), `backend/logs` (left over from the old project).
 - ~4,600 lines across server and client.
 
-## 3. Actual status found (vs. the previous IMPLEMENTATION_STATUS.md)
+## 3. Actual status found (vs. the previous IMPLEMENTATION_STATUS.md, now at docs/IMPLEMENTATION_STATUS.md)
 
 | Claim in the old status file | What I found |
 |---|---|
@@ -67,4 +69,4 @@ Other problems found and fixed:
 3. Recommender: hard eligibility filter, country-aware location, deterministic ordering, per-criterion breakdown, profile tests.
 4. Gemini model update and real integration self-checks (CLI + admin API).
 5. UI: score breakdown, listing detail page, source coverage dashboard, integrations tab, skeleton/error states, mobile fixes, 16 browser journeys with screenshots.
-6. Documentation (this file, BRABBLE_PARITY_REPORT, SOURCE_COVERAGE_REPORT, IMPLEMENTATION_STATUS, TEST_REPORT, ENV_SETUP_GUIDE, README).
+6. Documentation (this file, BRABBLE_PARITY_REPORT, SOURCE_COVERAGE_REPORT, IMPLEMENTATION_STATUS, TEST_REPORT, ENV_SETUP (was ENV_SETUP_GUIDE), README).

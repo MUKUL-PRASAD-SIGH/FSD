@@ -1,5 +1,7 @@
 # Source coverage report
 
+> **Historical report.** A snapshot from the November 2026 takeover audit, kept for the record. The current state is in [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md); the live test suite is described in [TESTING](../TESTING.md).
+
 _2 Nov 2026._
 
 > **Read this first.** None of the listing sites can be reached from the sandbox this work was done in. The network policy denies the connections, and the WebFetch tool could not resolve the hosts either. So **no adapter has been run against a live site in this session**, and no live listing counts are claimed here. Each adapter is tested against constructed fixtures (`server/tests/fixtures/sources.js`). For the original seven adapters, the fixtures use the field names they read when they last ran live (366 listings, per the previous status file).

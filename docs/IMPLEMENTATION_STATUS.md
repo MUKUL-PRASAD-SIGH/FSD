@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last verified: 11 Nov 2026 (60/60 tests against a real MongoDB; live ingest: ~944 listings from 10 sources). Test evidence: [TEST_REPORT.md](TEST_REPORT.md). Sources: [SOURCE_COVERAGE_REPORT.md](SOURCE_COVERAGE_REPORT.md). Setup: [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md). Brabble comparison: [BRABBLE_PARITY_REPORT.md](BRABBLE_PARITY_REPORT.md)._
+_Last verified: 12 Nov 2026 (`npm run verify`: 114 tests against a real MongoDB with real WebSockets, the client build, and the 41-check live end-to-end run against a separately started server; live ingest: ~940 listings from 10 sources). Current testing: [TESTING.md](TESTING.md) (historical report: [TEST_REPORT.md](reports/TEST_REPORT.md)). Sources: [SOURCE_COVERAGE_REPORT.md](reports/SOURCE_COVERAGE_REPORT.md). Setup: [ENV_SETUP.md](ENV_SETUP.md). Brabble comparison: [BRABBLE_PARITY_REPORT.md](reports/BRABBLE_PARITY_REPORT.md)._
 
 ## 1. Fully implemented and verified
 Run in this session with automated tests and/or browser journeys.
@@ -25,6 +25,7 @@ Run in this session with automated tests and/or browser journeys.
 | Single-process production serving (`SERVE_CLIENT=true`) with a hash-based CSP for the SPA | e2e test; Chromium check |
 | Email verification (soft, banner + `/verify`), breached-password rejection, installable PWA manifest | e2e tests; browser |
 | **Multi-page event crawler** (official info pages + published FAQ, robots/Crawl-delay, 1 req/s, no user-generated areas) and **anonymous question analytics** (private history, opt-out tally, organiser insight) | `crawler.test.js` (9 tests); policy in docs/CRAWLER.md |
+| **Full product journey** (11 phases, 41 checks) in-process and against a real server process | `npm run e2e`, `server/tests/journey.test.js`; it found and fixed a real PDF-upload bug |
 | **Network, teams, chat, reminders**: Free: connections and blocking, live DMs, joining invited teams/rooms and chatting in them, live notifications, email reminders, Register → tracker. Pro: hosting hackathon team rooms and invite-only private rooms (invites by connection/email, tracker Team up), teammate/team recommendations, smart people search, public teams + join requests, idea voting | `social.test.js` (13 tests with real WebSockets, incl. the plan split and downgrade grandfathering); two-browser run (live toast, badge, DM, team room, idea vote); docs/SOCIAL.md |
 | **Calendar integration**: Google / Outlook / Microsoft 365 add-event links, RFC 5545 `.ics` (folded, escaped, stable UIDs), personalised downloads, and a live per-user subscription feed (secret token, rotate/revoke, chosen reminders, opt-in picks) | `calendar.test.js` (8 tests); browser run: Tracker sync panel and Add-to-calendar menu |
 | **Ask this hackathon**: per-event agent that crawls the event's own page (SSRF-safe, robots-aware, cached in MongoDB) and answers only from it with sources | `page-agent.test.js`; live runs on Unstop, MLH and Devfolio listings |
@@ -40,10 +41,10 @@ The code exists and is unit-tested where possible, but has not been run against 
 | Area | What's missing | How to verify |
 |---|---|---|
 | **All 16 source adapters live** | Sandbox blocks every listing host | `cd server && npm run sources:check` on a normal machine; Admin → Sources |
-| Google sign-in | Real OAuth client ID; the flow is tested with a mocked verifier | ENV_SETUP_GUIDE §2, then sign in by hand |
+| Google sign-in | Real OAuth client ID; the flow is tested with a mocked verifier | ENV_SETUP §2, then sign in by hand |
 | Gemini answers (`gemini-2.5-flash`) and embeddings (`gemini-embedding-001`) | API key. Requests reach Google and are rejected only for the invalid test key | `npm run integrations:check gemini_generate gemini_embeddings` |
 | Email (reset links, digests) | SMTP credentials; SMTP is blocked from the sandbox | `SMTP_TEST_TO=you@… npm run integrations:check smtp` |
-| Kaggle and clist adapters | Free API keys | ENV_SETUP_GUIDE §5 |
+| Kaggle and clist adapters | Free API keys | ENV_SETUP §5 |
 
 ## 3. Partially implemented
 | Area | Gap |
@@ -64,9 +65,9 @@ The code exists and is unit-tested where possible, but has not been run against 
 ## 5. Blocked by unavailable third-party access
 | Blocker | Unblock |
 |---|---|
-| brabble.ai unreachable, so no side-by-side product comparison | Follow the procedure in BRABBLE_PARITY_REPORT.md from a normal browser |
+| brabble.ai unreachable, so no side-by-side product comparison | Follow the procedure in reports/BRABBLE_PARITY_REPORT.md from a normal browser |
 | Listing sites unreachable, so no live counts | Run `npm run sources:check`, or allow the domains in the cloud environment's network settings |
-| No credentials for Google, Gemini, SMTP, Kaggle, clist | ENV_SETUP_GUIDE.md |
+| No credentials for Google, Gemini, SMTP, Kaggle, clist | ENV_SETUP.md |
 | Push to GitHub refused (Claude GitHub App has no access to `mukundgaur06/FSD_PROJ`) | Reconnect GitHub / install the app; the commits are on the local branch |
 
 ## Known limitations

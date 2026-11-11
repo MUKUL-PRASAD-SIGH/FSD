@@ -1,5 +1,7 @@
 # Test report
 
+> **Historical report.** A snapshot from the November 2026 takeover audit, kept for the record. The current state is in [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md); the live test suite is described in [TESTING](../TESTING.md).
+
 _Run on 2 Nov 2026 in the takeover sandbox: Node 22.23.4, MongoDB 8.0.23, Chromium (Playwright). Every number below comes from an actual run._
 
 ## Summary
@@ -7,7 +9,7 @@ _Run on 2 Nov 2026 in the takeover sandbox: Node 22.23.4, MongoDB 8.0.23, Chromi
 | Suite | Command | Result |
 |---|---|---|
 | Server: unit, integration, API, ingestion, recommender, parsing | `cd server && npm test` | **54 / 54 pass** (was 24/25 at takeover) |
-| Browser journeys (real UI + API + MongoDB) | `node e2e/journeys.js` | **16 / 16 pass**; report in `docs/screenshots/journeys-report.json` |
+| Browser journeys (real UI + API + MongoDB) | `node e2e/journeys.js` | **16 / 16 pass**; the report was written to `docs/screenshots/` (removed: the UI has since been redesigned; re-run `node e2e/journeys.js` to regenerate into `e2e/output/`) |
 | Client production build | `cd client && npm run build` | passes (≈103 KB gzipped JS) |
 | Dependency audit | `npm audit --omit=dev` (server), `npm audit` (client) | **0 vulnerabilities** in both |
 | Integration self-check | `cd server && npm run integrations:check` | MongoDB, JWT OK. Everything else **not configured** (no keys provided) |

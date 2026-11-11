@@ -1,14 +1,14 @@
 // Browser journeys through the real UI (Vite dev server + API + MongoDB), with Playwright/Chromium.
 //   node e2e/journeys.js [baseUrl]      (default http://localhost:5173)
 // Reads ADMIN_EMAIL / ADMIN_PASSWORD / PRO_ACTIVATION_KEYS from the repo-root .env; never prints them.
-// Writes screenshots and a pass/fail report to docs/screenshots/.
+// Writes screenshots and a pass/fail report to e2e/output/ (git-ignored).
 const fs = require('fs');
 const path = require('path');
 require(path.join(__dirname, '..', 'server', 'node_modules', 'dotenv')).config({ path: path.join(__dirname, '..', '.env'), quiet: true });
 const { chromium } = require('playwright');
 
 const BASE = process.argv[2] || 'http://localhost:5173';
-const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
+const OUT = path.join(__dirname, 'output'); // git-ignored
 const RESUME = path.join(__dirname, '..', 'server', 'tests', 'fixtures', 'resume.pdf');
 fs.mkdirSync(OUT, { recursive: true });
 const stamp = Date.now().toString(36);
