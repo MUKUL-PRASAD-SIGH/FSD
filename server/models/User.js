@@ -62,6 +62,12 @@ const userSchema = new mongoose.Schema(
       willingToTravel: { type: Boolean, default: false },
     },
     privacy: { shareQuestions: { type: Boolean, default: true } },
+    // Social profile. Off by default: nobody appears in people search or recommendations until they opt in.
+    social: {
+      discoverable: { type: Boolean, default: false },
+      headline: { type: String, default: '', maxlength: 120 },
+      lookingForTeam: { type: Boolean, default: false },
+    },
     calendar: {
       token: { type: String, select: false }, // secret feed URL token; looked up by index, never serialised
       tokenCreatedAt: Date,
@@ -72,6 +78,8 @@ const userSchema = new mongoose.Schema(
       inApp: { type: Boolean, default: true },
       email: { type: Boolean, default: false },
       minMatch: { type: Number, default: 55, min: 0, max: 100 },
+      emailReminders: { type: Boolean, default: false }, // email me before tracked deadlines (needs a verified email)
+      emailSocial: { type: Boolean, default: true }, // email me about connection requests and team/room invites
       lastRunAt: { type: Date, default: Date.now },
     },
     resume: {
@@ -98,6 +106,10 @@ userSchema.pre('save', async function () {
   this.hasPassword = true;
   if (!this.isNew) { this.passwordChangedAt = new Date(); this.tokenVersion += 1; }
 });
+
+// Any change to tokenVersion revokes sessions: also drop that user's live chat sockets right away.
+userSchema.pre('save', function () { this.$locals.tvBumped = !this.isNew && this.isModified('tokenVersion'); });
+userSchema.post('save', function () { if (this.$locals.tvBumped) { try { require('../services/realtime').disconnectUser(this._id); } catch { /* realtime not running */ } } });
 
 userSchema.methods.comparePassword = function (plain) {
   return this.password ? bcrypt.compare(plain, this.password) : Promise.resolve(false);
