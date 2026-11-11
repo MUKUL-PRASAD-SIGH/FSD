@@ -1,9 +1,20 @@
 name: CI
+
 on:
-  push: { branches: [main] }
+  push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MONGO_URI: mongodb://127.0.0.1:27017
+
 jobs:
-  test:
+  server:
+    name: Server tests and live end-to-end
     runs-on: ubuntu-latest
     services:
       mongo:
@@ -12,8 +23,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: "**/package-lock.json" }
-      - run: cd server && npm ci && npm test
-        env: { MONGO_URI: "mongodb://127.0.0.1:27017/hackelite_ci" }
-      - run: cd server && npm audit --omit=dev --audit-level=high
-      - run: cd client && npm ci && npm run build
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install
+        run: npm ci
+        working-directory: server
+      - name: Unit, integration and in-process journey tests
+        run: npm test
+        working-directory: server
+      - name: Live end-to-end (boots the real server process)
+        run: npm run e2e
+        working-directory: server
+        env:
+          E2E_VERBOSE: "1"
+
+  client:
+    name: Client build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+        working-directory: client
+      - run: npm run build
+        working-directory: client
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: server
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: client
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    needs: [server, client]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t hackelite:ci .
