@@ -4,7 +4,9 @@ const cors = require('cors');
 const { config } = require('../config/env');
 
 const json429 = (message) => (_req, res) => res.status(429).json({ error: message });
-const off = () => config.isTest && process.env.TEST_RATE_LIMITS !== 'on';
+// Off in tests, and off when DISABLE_RATE_LIMITS=1 outside production (used by the live end-to-end run, which makes hundreds of
+// sign-ups from one IP). Production ignores the switch.
+const off = () => (config.isTest && process.env.TEST_RATE_LIMITS !== 'on') || (!config.isProd && process.env.DISABLE_RATE_LIMITS === '1');
 
 // Global: generous. Auth endpoints: strict (credential stuffing). Expensive endpoints: AI / uploads.
 const limiter = (windowMs, max, message) =>

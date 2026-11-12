@@ -1,4 +1,8 @@
 const KEY = 'hackelite_token';
+// Leave blank when the browser and API share an origin. Set VITE_API_ORIGIN when hosting
+// the client separately; every computer must use the same API and shared database.
+export const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || '').replace(/\/+$/, '');
+const API_BASE = `${API_ORIGIN}/api`;
 export const getToken = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 export const setToken = (t) => { try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch { /* storage blocked */ } };
 
@@ -10,7 +14,7 @@ async function request(path, { method = 'GET', body, form, auth = true } = {}) {
   const token = getToken();
   if (token && auth) headers.Authorization = `Bearer ${token}`;
   if (body) headers['Content-Type'] = 'application/json';
-  const res = await fetch(`/api${path}`, { method, headers, body: form || (body ? JSON.stringify(body) : undefined) });
+  const res = await fetch(`${API_BASE}${path}`, { method, headers, body: form || (body ? JSON.stringify(body) : undefined) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // An expired/revoked session on an authenticated call signs the user out cleanly
@@ -68,7 +72,7 @@ export const api = {
   calendarRevoke: () => j('DELETE', '/calendar/token'),
   // personalised .ics for one listing: fetched with the session token, returned as a Blob to save
   eventIcs: async (id) => {
-    const res = await fetch(`/api/calendar/event/${id}.ics`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const res = await fetch(`${API_BASE}/calendar/event/${id}.ics`, { headers: { Authorization: `Bearer ${getToken()}` } });
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Could not create the calendar file (${res.status})`); }
     const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'event.ics';
     return { blob: await res.blob(), filename: name };

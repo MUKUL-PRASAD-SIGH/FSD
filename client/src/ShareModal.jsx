@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from './api.js';
+import { useAuth } from './auth.jsx';
 import { useToast } from './toast.jsx';
 
 // Tracker -> "Team up on this hackathon". Pick someone you're connected with, or type the email of a registered person.
@@ -8,6 +9,7 @@ import { useToast } from './toast.jsx';
 // they accept, then the hackathon appears in their tracker and they land in the team room.
 export default function ShareModal({ listing, onClose }) {
   const toast = useToast();
+  const { isPro } = useAuth();
   const [conns, setConns] = useState([]);
   const [pick, setPick] = useState('');
   const [email, setEmail] = useState('');
@@ -35,6 +37,11 @@ export default function ShareModal({ listing, onClose }) {
           <>
             <p className="ok">Invitation sent. They’ll be notified now{' '}and can join your team room as soon as they accept.</p>
             <div className="row"><Link className="btn primary" to={`/teams/${done.teamId}`} onClick={onClose}>Open the team</Link><button className="btn ghost" onClick={onClose}>Done</button></div>
+          </>
+        ) : !isPro ? (
+          <>
+            <p><span className="pill">Pro</span> Sharing a hackathon with a teammate creates a team and a private room for it, which is a Pro feature. You can still join any team or private room you are invited to, and chat there, for free.</p>
+            <div className="row"><Link className="btn primary" to="/plan" onClick={onClose}>Unlock Pro</Link><button className="btn ghost" onClick={onClose}>Close</button></div>
           </>
         ) : (
           <form onSubmit={send}>

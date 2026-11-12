@@ -35,9 +35,15 @@ export default function Teams() {
   return (
     <>
       <div className="row-between"><h1>Teams</h1><button className="btn primary" onClick={() => setOpen(!open)}>{open ? 'Cancel' : '+ New team'}</button></div>
-      <p className="muted">A team gets its own private room, an invite list and (with Pro) an idea board. Teams are private unless you make them public.</p>
+      <p className="muted">A team gets its own private room and an invite list. Pro members create and host teams; anyone invited can join and chat for free.</p>
 
-      {open && (
+      {open && !isPro && (
+        <div className="panel upsell">
+          <h2>Hosting a team is a Pro feature <span className="pill">Pro</span></h2>
+          <p>Pro lets you create a hackathon team with its own private room, invite people by connection or email, and use the idea board. You can still join any team or private room you are invited to, and chat there, for free. <Link to="/plan">Unlock Pro</Link></p>
+        </div>
+      )}
+      {open && isPro && (
         <form className="panel form-grid" onSubmit={create}>
           <label className="span2">Team name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required minLength={2} maxLength={80} placeholder="e.g. Pixel Pirates" /></label>
           <label>Hackathon (optional)
@@ -55,7 +61,7 @@ export default function Teams() {
       )}
 
       {teams === null && <p className="muted">Loading…</p>}
-      {teams?.length === 0 && !open && <div className="empty"><h2>No teams yet</h2><p>Create one, or share a hackathon from your <Link to="/tracker">tracker</Link> with a teammate and a team is made for you.</p></div>}
+      {teams?.length === 0 && !open && <div className="empty"><h2>No teams yet</h2><p>{isPro ? <>Create one, or share a hackathon from your <Link to="/tracker">tracker</Link> with a teammate and a team is made for you.</> : <>Teams you are invited to appear here. Creating your own is a Pro feature. <Link to="/plan">Unlock Pro</Link></>}</p></div>}
       <div className="grid">
         {teams?.map((t) => (
           <article className="card" key={t.id}>

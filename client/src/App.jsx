@@ -18,7 +18,7 @@ import Teams from './pages/Teams.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import Chat from './pages/Chat.jsx';
 import { useRealtime } from './realtime.jsx';
-import { api } from './api.js';
+import { API_ORIGIN, api } from './api.js';
 import { useToast } from './toast.jsx';
 
 // Route guards. The server enforces every one of these again; this is only for a sensible UX.
@@ -90,6 +90,7 @@ export default function App() {
           )}
         </div>
       </header>
+      {import.meta.env.DEV && !API_ORIGIN && <div className="banner">Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</div>}
       <VerifyBanner />
       <main id="main">
         {ready && (

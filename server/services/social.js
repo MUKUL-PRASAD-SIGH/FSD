@@ -5,6 +5,10 @@ const User = require('../models/User');
 const { notify } = require('./notify');
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
+// Hosting hackathon rooms is a Pro feature. Joining one by invitation is free.
+const proOnly = (user, what) => {
+  if (!user?.isPro?.()) throw Object.assign(fail(402, `${what} is a Pro feature. Activate Pro on the Plan page.`), { code: 'PRO_REQUIRED' });
+};
 const oid = (v) => (mongoose.isValidObjectId(v) ? String(v) : null);
 const DAILY_REQUEST_CAP = 50;
 
@@ -111,4 +115,4 @@ async function findTarget({ userId, email }) {
   return null;
 }
 
-module.exports = { fail, oid, card, relation, isBlocked, areConnected, request, accept, decline, cancel, remove, block, unblock, overview, blockedList, findTarget };
+module.exports = { fail, proOnly, oid, card, relation, isBlocked, areConnected, request, accept, decline, cancel, remove, block, unblock, overview, blockedList, findTarget };

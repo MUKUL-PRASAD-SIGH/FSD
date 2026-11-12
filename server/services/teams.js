@@ -38,6 +38,7 @@ async function track(userId, listingId, status = 'saved') {
 }
 
 async function createTeam(user, b = {}) {
+  social.proOnly(user, 'Creating a team and its private room');
   const name = String(b.name || '').trim();
   if (name.length < 2 || name.length > 80) throw fail(400, 'Give the team a name (2 to 80 characters)');
   const visibility = b.visibility === 'public' ? 'public' : 'private';
@@ -97,6 +98,7 @@ async function createInvite({ kind, from, to, team, room, message }) {
 const GENERIC = { ok: true, message: 'If that person is on HackElite, they have been sent your invitation.' };
 
 async function inviteToTeam(team, from, { userId, email, message }) {
+  social.proOnly(from, 'Inviting people to a team');
   const target = await social.findTarget({ userId, email });
   if (!target || String(target._id) === String(from._id) || isMember(team, target._id) || (await social.isBlocked(from._id, target._id))) return GENERIC;
   if (team.members.length >= team.maxMembers) throw fail(409, 'This team is full');
@@ -121,6 +123,7 @@ async function requestToJoin(team, user, message) {
 }
 
 async function inviteToRoom(room, from, userId) {
+  social.proOnly(from, 'Inviting people to a private room');
   if (room.kind !== 'group') throw fail(400, 'Only private group rooms use invitations');
   if (!room.members.some((m) => String(m.user) === String(from._id) && m.role === 'owner')) throw fail(403, 'Only the room owner can invite people');
   const target = userId && oid(userId) ? await User.findOne({ _id: userId, status: 'active' }) : null;
@@ -234,6 +237,7 @@ async function disband(team) {
 
 // The tracker's "share with a teammate" button: find (or create) this user's team for the hackathon, then invite.
 async function shareListing(user, { listingId, userId, email, teamId, message }) {
+  social.proOnly(user, 'Sharing a hackathon with a teammate and creating its team room');
   const listing = oid(listingId) ? await Listing.findOne({ _id: listingId, status: 'published' }).select('title').lean() : null;
   if (!listing) throw fail(404, 'That hackathon was not found');
   if (!(await Saved.exists({ user: user._id, listing: listing._id }))) throw fail(400, 'Add this hackathon to your tracker first');

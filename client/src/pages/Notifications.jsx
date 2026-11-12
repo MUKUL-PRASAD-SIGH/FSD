@@ -8,9 +8,12 @@ export function useNotifications(enabled) {
   useEffect(() => {
     if (!enabled) return;
     load();
-    const t = setInterval(load, 60000);
+    const t = setInterval(load, 15000);
     window.addEventListener('hackelite:notification', load);
-    return () => { clearInterval(t); window.removeEventListener('hackelite:notification', load); };
+    const onFocus = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { clearInterval(t); window.removeEventListener('hackelite:notification', load); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
   }, [enabled, load]);
   return [data, load];
 }

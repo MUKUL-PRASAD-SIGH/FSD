@@ -48,6 +48,7 @@ function RoomHeader({ roomId, onGone }) {
 }
 
 export default function Chat() {
+  const { isPro } = useAuth();
   const { roomId } = useParams();
   const nav = useNavigate();
   const toast = useToast();
@@ -81,7 +82,13 @@ export default function Chat() {
   return (
     <>
       <div className="row-between"><h1>Chat</h1><button className="btn primary" onClick={() => setCreating(!creating)}>{creating ? 'Cancel' : '+ Private room'}</button></div>
-      {creating && (
+      {creating && !isPro && (
+        <div className="panel upsell">
+          <h2>Private rooms are a Pro feature <span className="pill">Pro</span></h2>
+          <p>Pro members can create invite-only rooms for their crew. You can still join any team or private room you are invited to, and chat there, for free. Direct messages with your connections are free. <Link to="/plan">Unlock Pro</Link></p>
+        </div>
+      )}
+      {creating && isPro && (
         <form className="panel" onSubmit={createRoom}>
           <label>Room name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Weekend build crew" maxLength={80} required minLength={2} /></label>
           <fieldset><legend>Invite people you’re connected with (they must accept)</legend>

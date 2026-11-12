@@ -1,118 +1,248 @@
+<div align="center">
+
 # HackElite
 
-Hackathons, case competitions and contests from 16 sources in one place (de-duplicated across platforms), with **role-based accounts**, **in-app notifications**, and a **Pro plan** that ranks everything against your resume and location using a MongoDB-backed RAG pipeline.
+### Every open hackathon, ranked for **you**.
 
-MongoDB is the only datastore. The previous version of the project is preserved in [`old/`](old/).
+Live listings from 16 sources, a resume-aware recommendation engine that explains its scores,<br>
+an AI agent for every event, calendar sync, and private team chat, all on one MongoDB.
 
-> **Docs:** [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) (what is verified vs not) · [TEST_REPORT](TEST_REPORT.md) · [SOURCE_COVERAGE_REPORT](SOURCE_COVERAGE_REPORT.md) · [ENV_SETUP_GUIDE](ENV_SETUP_GUIDE.md) (every key, step by step) · [TAKEOVER_AUDIT](TAKEOVER_AUDIT.md) · [BRABBLE_PARITY_REPORT](BRABBLE_PARITY_REPORT.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [SECURITY](docs/SECURITY.md) · [CRAWLER](docs/CRAWLER.md) (crawler policy, question privacy) · [SOCIAL](docs/SOCIAL.md) (network, teams, chat, reminders)
+![Node](https://img.shields.io/badge/Node-%E2%89%A5%2020-339933?logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-realtime-010101?logo=socketdotio)
+![Tests](https://img.shields.io/badge/tests-114%20passing-brightgreen)
+![E2E](https://img.shields.io/badge/live%20end--to--end-41%20checks-brightgreen)
+![Audit](https://img.shields.io/badge/npm%20audit-0%20vulnerabilities-brightgreen)
 
-## Plans
+[**Quick start**](#-quick-start) · [**Features**](#-features) · [**Free vs Pro**](#-free-vs-pro) · [**Architecture**](#-how-it-works) · [**Docs**](#-documentation)
+
+<br>
+
+<img src="docs/assets/home.png" alt="HackElite home: live stats, filters and expandable event cards" width="900">
+
+</div>
+
+---
+
+## Why HackElite
+
+Hackathons, case competitions and coding contests are scattered across Devpost, Unstop, Devfolio, MLH, Kaggle, Codeforces and a dozen more sites. Deadlines slip, people apply to events they are not eligible for, and finding teammates is a separate chore.
+
+**HackElite puts every open event in one place, tells you which ones fit *you* and why, answers questions about any single event, keeps the deadlines in your own calendar, and lets you team up and chat privately.**
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🔎 Discover
+- **16 live sources**, refreshed hourly, validated and **de-duplicated across sites**
+- Search, filter, sort; **cards expand in place** with every detail
+- **Ask in plain English**: *"offline hackathons in pune closing soon with 1L+ prize"*. A named place is a hard filter, so Bangalore never returns Dhaka
+
+### 🎯 Recommendations that explain themselves
+- **Resume Studio**: drop a PDF/DOCX once; skills, interests and graduation year are inferred (parsed in memory, the file is never stored)
+- **Explainable 0-100 score** from an 8-criterion rubric: skills, semantic fit, location, interests, preferences, eligibility, timing, prize-vs-competition
+- Hard filters hide events you **cannot enter** (education level, graduation batch)
+
+### 🤖 Ask any hackathon
+- An agent reads **that event's own site** (FAQ, rules, schedule), politely: `robots.txt`, one request a second, same-site only, **SSRF-safe**
+- Answers cite sources and say honestly when a page can't be read
+
+</td>
+<td width="50%" valign="top">
+
+### 📅 Never miss a deadline
+- **Register click** saves the event to your **tracker** as *applied*
+- **Add to Google / Outlook / Apple**, or turn on a **live private calendar feed** with your own reminders
+- **Email reminders** before deadlines (verified, opt-in, idempotent)
+
+### 👥 Team up
+- **Connect** with people (opt-in discovery, never shows your email), **live DMs** over WebSockets
+- **Teams with a private room**, invites by connection or email, tracker **Team up** button
+- **Pro**: teammate and open-team recommendations (complementary skills, shared hackathons), plain-English people search, idea voting
+- Live notifications, unread badges, block/leave controls
+
+### 🛡️ Built to be trusted
+- Revocable JWT sessions, lockout, breach-checked passwords, SSRF/NoSQL/XSS defences
+- **Personal data stays private**, proven with two-user tests; full account erasure
+
+</td>
+</tr>
+</table>
+
+### Screenshots
+
+| | |
+|:--:|:--:|
+| **Resume Studio + explainable picks**<br><img src="docs/assets/for-you-resume-studio.png" width="440"> | **Click a card: every detail, in place**<br><img src="docs/assets/card-expanded.png" width="440"> |
+| **Ask about this hackathon (cited answers)**<br><img src="docs/assets/listing-agent.png" width="440"> | **Tracker + live calendar sync**<br><img src="docs/assets/tracker-calendar.png" width="440"> |
+| **Network: requests, people, suggestions**<br><img src="docs/assets/network.png" width="440"> | **Live private chat**<br><img src="docs/assets/chat.png" width="440"> |
+| **Team room, invites and idea board**<br><img src="docs/assets/team-room.png" width="440"> | **Dark mode and mobile**<br><img src="docs/assets/home-dark.png" width="300"> <img src="docs/assets/mobile-home.png" width="110"> |
+
+## 💎 Free vs Pro
 
 | | **Free** | **Pro** |
-|---|---|---|
-| Browse, filter, sort live listings from 16 sources, listing detail pages | ✅ | ✅ |
-| Save / track applications (Kanban) | ✅ | ✅ |
-| Add to Google / Outlook / Apple calendar, live personal calendar feed with your own reminders, public JSON API | ✅ | ✅ |
-| In-app notifications for new matches and closing deadlines | ✅ (basic score) | ✅ (rubric score) |
-| Plain-English search ("online AI hackathons closing soon") | ✅ | ✅ |
+|---|:--:|:--:|
+| Browse, search, filter, expand cards, Ask in plain English | ✅ | ✅ |
+| Tracker, Register → tracker, notifications, **email reminders** | ✅ | ✅ |
+| Add to Google/Outlook/Apple + **live calendar feed** | ✅ | ✅ |
+| Ask any hackathon (per-event agent) | ✅ | ✅ |
+| Connect with people, **live direct messages**, block | ✅ | ✅ |
+| **Join** a team or private room you are invited to, and chat | ✅ | ✅ |
 | Basic picks from your skills and interests | ✅ | ✅ |
-| Connections, direct messages, private rooms, teams with invites, live notifications, email reminders | ✅ | ✅ |
-| Teammate and open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
-| Resume upload and parsing | ❌ | ✅ |
-| Location-aware ranking (city, state, travel) + eligibility | ❌ | ✅ |
-| 8-criterion recommendation rubric with explanations | ❌ | ✅ |
-| RAG assistant with cited answers | ❌ | ✅ |
+| Resume upload and analysis | ❌ | ✅ |
+| Full **8-criterion** recommendation rubric with explanations | ❌ | ✅ |
+| RAG assistant with citations | ❌ | ✅ |
+| **Host** hackathon teams with a private room, invite people, tracker **Team up**, private rooms | ❌ | ✅ |
+| Teammate + open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
 
-### Switching to Pro (no billing yet)
-Pro is activated with a key. Set one or more comma-separated keys in the root `.env`:
+> Pro is activated with a key (`PRO_ACTIVATION_KEYS` in `.env`; the public demo key must be changed before deploying). Rules and rationale: [docs/SOCIAL.md](docs/SOCIAL.md).
 
-```
-PRO_ACTIVATION_KEYS=HACKELITE-PRO-DEMO-2026
-```
+## 🚀 Quick start
 
-Then sign in → **Upgrade** (or `/plan`) → paste the key → **Activate Pro**. `HACKELITE-PRO-DEMO-2026` is the documented demo key; **change it before deploying** (the server refuses to start in production without keys). Admins can also grant or revoke Pro per user in the Admin console. *Replace the key check in `server/routes/plan.js` with a payment webhook when you add billing.*
-
-## Roles
-
-| Role | How you get it | Can do |
-|---|---|---|
-| **user** | Default sign-up | Browse, save, notifications, profile, Free/Pro features |
-| **lister** | Sign up with "I run events" (needs organisation details) | After **admin approval**: publish, edit and delete own events via the event template. Before approval: can sign in but not publish |
-| **admin** | Created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` on server start; can promote others | Approve/reject listers, manage users and plans, unpublish listings, view the audit log, run the notifier |
-
-`admin` can never be self-selected through the API.
-
-## Quick start
-
-Requires **Node 20+** and a MongoDB. No MongoDB installed? Run `cd server && npm install && npm run db` in a spare terminal: it starts a real, persistent local database on `127.0.0.1:27017` (the default `MONGO_URI`).
-
-**Or run everything with Docker:** `docker compose up --build` → http://localhost:5050 (app + MongoDB, production mode; needs the root `.env`).
+**Requirements:** Node 20+ (`nvm use` reads `.nvmrc`). MongoDB is optional: the dev command starts a real one for you.
 
 ```bash
-# 1. configure (the .env already in the repo root is git-ignored; see .env.example for every option)
-cp .env.example .env        # then fill JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
-
-# 2. API  → http://localhost:5050   (pulls live listings on boot, then hourly)
-cd server && npm install && npm start
-
-# 3. Web  → http://localhost:5173   (proxies /api to 5050)
-cd client && npm install && npm run dev
+git clone https://github.com/MUKUL-PRASAD-SIGH/FSD.git && cd FSD
+npm install                 # root tooling
+npm run setup               # server + client dependencies
+cp .env.example .env        # set JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD (see below)
+npm run dev                 # MongoDB + API :5050 + web :5173, all in one terminal
 ```
 
-Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
-The admin password must satisfy the policy (10+ chars, upper/lower, digit, symbol; passwords found in known data breaches are rejected).
-`npm run seed` adds 12 offline sample listings (auto-removed after the first live ingest).
+Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s), then hourly.
 
-### Environment variables
-| Variable | Required | Purpose |
-|---|---|---|
-| `MONGO_URI` | ✅ | MongoDB connection string |
-| `JWT_SECRET` | ✅ | ≥ 32 chars; server warns (dev) or refuses to start (prod) otherwise |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | ✅ first run | Bootstrap the first admin |
-| `PRO_ACTIVATION_KEYS` | for Pro | Comma-separated Pro keys |
-| `API_PORT`, `CLIENT_ORIGIN` | defaults 5050 / `http://localhost:5173` | Port and CORS allowlist |
-| `GOOGLE_CLIENT_ID` | optional | Enables "Continue with Google" (the browser reads it from the API; no client env needed) |
-| `GEMINI_API_KEY`, `GEMINI_MODEL`, `EMBEDDINGS_PROVIDER` | optional | Generated assistant answers / Gemini embeddings (default is a local model, no key) |
-| `SMTP_URL`, `MAIL_FROM`, `APP_URL` | optional | Password-reset and digest emails |
-| `ENABLED_SOURCES`, `DISABLE_INGEST`, `INGEST_*`, `USD_TO_INR` | optional | Ingestion controls |
-| `KAGGLE_USERNAME`/`KAGGLE_KEY`, `CLIST_USERNAME`/`CLIST_API_KEY` | optional | Extra sources (free keys) |
-| `SERVE_CLIENT` | production | Serve `client/dist` from the API with a page CSP |
+**This quick start is local to one computer.** The example `MONGO_URI` uses `127.0.0.1`, so accounts, roles, and requests are stored in that computer's MongoDB. To share accounts between computers, deploy one public app/API and point it at one persistent shared MongoDB database (Atlas is the usual choice). Every user must open the same public app URL. See [deployment](docs/DEPLOYMENT.md) and [environment setup](docs/ENV_SETUP.md). For a separately hosted client, set `VITE_API_ORIGIN` to that same API in the client build environment; leave it blank when the API serves the client from the same origin.
 
-Where to get every key, and how to verify it with a real request (`npm run integrations:check`), is in [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md).
+| First-run detail | |
+|---|---|
+| Generate `JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| Admin account | created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on start (password needs 10+ chars, upper/lower, digit, symbol) |
+| Try Pro | sign in → **Upgrade** → paste a key from `PRO_ACTIVATION_KEYS` |
+| Own MongoDB / Atlas | set `MONGO_URI`, then `npm run dev:nodb` |
+| Everything offline | works without any external key; Google, Gemini and SMTP are optional upgrades ([docs/ENV_SETUP.md](docs/ENV_SETUP.md)) |
 
-## How recommendations work
+**Docker (one machine, production-like):** `npm run docker:up` → http://localhost:5050 (app + MongoDB, health-checked). More in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-**Both tiers first remove** expired listings, listings you are clearly **not eligible** for (education level or graduation batch stated by the organiser), duplicates and listings already in your tracker, and say how many were hidden.
+**Shared demo deployment:** see the [Atlas + Render setup](docs/DEPLOYMENT.md#3-shared-setup-mongodb-atlas-and-render). The Blueprint keeps secrets out of Git and serves the app and API from one public URL.
 
-**Free (basic):** `0.45 interests + 0.35 skills + 0.20 urgency`, from the skills and interests you type.
+### Commands
 
-**Pro (rubric, 0–100):** `skills .22 · semantic .18 · interests .12 · location .14 · eligibility .08 · preferences .10 · timing .08 · value .08`.
-- *semantic*: cosine similarity between your profile (+ resume chunks) and listing embeddings.
-- *location*: online = 1; your city = 1; a city you like = .9; hybrid = .75; your state = .7; open to travel = .45; in person elsewhere = .1 (×0.75 penalty); in person in another country = .05 (×0.5 penalty).
-- *eligibility*: your education level vs. the listing's audience. *timing*: enough days left to prepare for that kind of event. *value*: prize size vs. how crowded it is.
-- Every card shows a 0–100 score, plain-English reasons and "Why this score?": each criterion's points (weight × score) with a one-line explanation. Same inputs always give the same order.
+| Command | What it does |
+|---|---|
+| `npm run dev` | MongoDB + API + web with hot reload |
+| `npm run dev:nodb` | API + web only (bring your own MongoDB) |
+| `npm test` | 114 tests: unit, integration, in-process journey (real MongoDB, real WebSockets) |
+| `npm run e2e` | **live end-to-end**: boots the real server process and runs the 41-check product journey |
+| `npm run verify` | tests + client build + live e2e (the gate before merging) |
+| `npm run build` | production client build |
+| `npm run ingest` · `sources:check` · `integrations:check` | refresh listings · probe all 16 sources · probe Gemini/SMTP/Google with your keys |
+| `npm run docker:up` / `docker:down` | run / stop the container stack |
 
-**RAG assistant (Pro):** listing text and resume chunks are embedded and stored in MongoDB → your question is parsed for hard constraints (online / closing this week / ₹1L+) → candidates are retrieved by similarity and re-ranked by your rubric → the answer cites its sources. With `GEMINI_API_KEY` the answer is generated from the retrieved context only; without it you get an extractive answer built from the top matches (never invented).
+## 🧠 How it works
 
-## Sources
-Unstop · Devpost · Devfolio · HackerEarth · Codeforces · CodeChef · LeetCode · MLH · Hack Club · ETHGlobal · DoraHacks · AtCoder · Topcoder · GeeksforGeeks · Kaggle (free key) · clist.by aggregator (free key), plus events published by approved listers.
-Each source is an independent adapter in `server/services/ingest/sources/`. Records are validated (with documented reject reasons), de-duplicated across platforms, and every sync is recorded for the **Admin → Sources** coverage dashboard. Check all sources live without a database: `cd server && npm run sources:check`. Details and confidence per source: [SOURCE_COVERAGE_REPORT.md](SOURCE_COVERAGE_REPORT.md). Respect each site's terms and keep the hourly interval.
-
-## Tests
-```bash
-cd server && npm test                    # 54 tests; real MongoDB in throwaway databases (dropped afterwards)
-node e2e/journeys.js                     # 16 browser journeys (needs API + `npx vite` running), screenshots in docs/screenshots/
-cd server && npm run integrations:check  # real requests to every configured integration
-cd server && npm run sources:check       # live check of every listing source (no database)
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI[React app] --- WS[Socket.IO]
+  end
+  subgraph Node["Node process"]
+    MW[Security middleware<br/>helmet · CORS · limits · sanitize]
+    API[Routes → Services]
+    RT[Realtime channel]
+    JOBS[Jobs: hourly ingest · reminders]
+  end
+  DB[(MongoDB<br/>incl. vectors)]
+  SRC[16 event sources]
+  UI -- REST --> MW --> API --> DB
+  WS -- JWT --> RT --> DB
+  API --> RT
+  JOBS --> SRC
+  JOBS --> API
+  API -- "SSRF-safe crawl" --> SRC
+  API -.-> MAIL[SMTP] & GEM[Gemini optional]
 ```
-Your real data is never touched by `npm test`. Results: [TEST_REPORT.md](TEST_REPORT.md).
 
-## Layout
+- **Ingestion**: adapters → validate → de-duplicate across sites → upsert; one broken source never blocks another, and events are only removed after a *complete* sync.
+- **Recommendations**: hard filters (expired / ineligible / duplicate) → weighted rubric → score + plain-English reasons; same input, same order. Embeddings live in MongoDB (local hashing model, or Gemini).
+- **Realtime**: Socket.IO on the API port; the **server** decides which rooms a socket joins; sessions revoked by a password change are disconnected instantly.
+- **Privacy by construction**: discovery is opt-in, emails never leave the account, room access is membership-only, and anonymous question analytics store no user id.
+
+The full tour with file paths and low-level mechanics is in **[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md)**.
+
+## 🗂️ Project structure
+
 ```
-server/   Express + Mongoose: config, middleware, models, routes, services (recommender, rag, embeddings, notifier, ingest, resumeParser)
-client/   React + Vite (no 3D/WebGL, ~100 KB gzipped JS)
-docs/     ARCHITECTURE.md, SECURITY.md, screenshots/
-e2e/      Playwright browser journeys
-scripts/  setup-dev-tools.sh (MongoDB, Ghidra, REA)
-old/      previous project
+.
+├── client/            React 19 + Vite app (pages, chat, calendar, resume studio, live realtime)
+├── server/            Node + Express API
+│   ├── routes/        HTTP layer (13 files, 105 routes)
+│   ├── services/      business logic: recommender, rag, teams, chat, calendar, pageAgent, ingest/ …
+│   ├── models/        16 Mongoose schemas
+│   ├── middleware/    auth · security · ops
+│   ├── utils/         safeFetch (SSRF-safe), pii, geo, password …
+│   ├── scripts/       dev-db · e2e-live · source-check · check-integrations
+│   └── tests/         13 test files + the shared product journey
+├── docs/              all documentation (start at docs/README.md)
+├── e2e/               optional Playwright browser journeys
+├── .github/           CI, issue and PR templates, dependabot
+└── Dockerfile · docker-compose.yml · package.json (root scripts)
 ```
+
+## ✅ Testing
+
+```text
+$ npm run e2e
+1 · Platform: health, headers, request ids, limits              ✔✔✔
+2 · Accounts: sign-up, verification, login, profile, reset       ✔✔✔✔✔
+…
+7 · Network, live chat, hackathon teams and the Free/Pro split  ✔✔✔✔✔✔✔✔✔✔✔✔
+…
+ALL 41 CHECKS PASSED  (real server process, isolated database)
+```
+
+Real MongoDB, real WebSocket clients, real PDF fixtures. The live run once caught a bug no unit test could (a valid PDF upload returning 500 in the real server). Layers, every test file and debugging switches: [docs/TESTING.md](docs/TESTING.md). CI runs it all plus `npm audit` and a Docker build on every push.
+
+## 🔐 Security and privacy at a glance
+
+| | |
+|---|---|
+| **Sessions** | HS256 JWT + `tokenVersion`: password change, disable or "sign out everywhere" revokes every token **and** live socket |
+| **Passwords** | bcrypt (cost 12), lockout, breached-password check via k-anonymity, generic errors (no account enumeration) |
+| **Input** | NoSQL-injection and prototype-pollution scrubber, 200 KB body cap, magic-byte upload check |
+| **Crawler** | resolves and **pins** to public IPs only, per-hop redirect checks, robots.txt + Crawl-delay, never fetches user-generated areas |
+| **Chat** | membership-only access, text only, server-decided socket rooms, per-socket rate limit |
+| **Privacy** | personal routes `no-store`; resume file never stored; opt-in discovery; anonymous question tally; full erasure |
+
+Every control is listed with the test that proves it in [docs/SECURITY.md](docs/SECURITY.md), including an honest list of known gaps. To report a vulnerability see [SECURITY.md](SECURITY.md).
+
+## 🧰 Tech stack
+Node.js · Express 4 · MongoDB/Mongoose · React 19 · Vite · React Router · Socket.IO · JWT · bcryptjs · helmet · express-rate-limit · cheerio · pdf-parse · mammoth · nodemailer · google-auth-library · Docker · GitHub Actions · `node:test`. Optional: Google Gemini (answers + embeddings).
+
+## 📚 Documentation
+
+| | |
+|---|---|
+| **[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md)** | **start here**: every feature, file paths, low-level mechanics, demo script, likely questions |
+| [docs/API.md](docs/API.md) | all 105 routes with access rules + WebSocket protocol |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | flows, recommender, ingestion, RAG, operations |
+| [docs/SECURITY.md](docs/SECURITY.md) | controls, tests, known gaps |
+| [docs/SOCIAL.md](docs/SOCIAL.md) | network, teams, chat, Free vs Pro |
+| [docs/CRAWLER.md](docs/CRAWLER.md) | crawler conduct and question privacy |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, proxy + WebSockets, scaling, go-live checklist |
+| [docs/TESTING.md](docs/TESTING.md) | test layers and the live end-to-end run |
+| [docs/ENV_SETUP.md](docs/ENV_SETUP.md) | where to get every key |
+| [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) | what is verified, what is not |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | set up, checks, conventions |
+
+## 🗺️ Known limits and roadmap
+- Some sources are unofficial endpoints (DoraHacks is bot-walled and skipped; Kaggle and clist need free keys). Pages rendered only by JavaScript give the per-event agent just the listing data.
+- Pro is key-based; **next:** payments, chat moderation (report/delete), headless-browser crawling, Redis for multi-instance scale-out.
+- One server instance today (jobs and sockets run in-process); the scale-out path is documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#7-scaling-honest-limits).
+- The previous version of the project is kept in [`old/`](old/) for reference.
+
+## 🤝 Contributing
+Pull requests are welcome: read [CONTRIBUTING.md](CONTRIBUTING.md), run `npm run verify`, and keep docs in step with code. This repository does not yet declare a licence; add a `LICENSE` file before accepting outside contributions.

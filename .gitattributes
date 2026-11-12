@@ -1,2 +1,12 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# One line-ending policy for everyone (Windows, macOS, Linux): LF in the repo and in checkouts.
+* text=auto eol=lf
+
+# Binary files: never touch bytes (a CRLF conversion would corrupt PDFs/images)
+*.pdf   binary
+*.docx  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff2 binary

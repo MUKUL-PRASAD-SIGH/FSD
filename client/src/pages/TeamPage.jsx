@@ -97,7 +97,13 @@ export default function TeamPage() {
             {team.pendingInvites.length > 0 && <><h3>Pending</h3>{team.pendingInvites.map((p) => <div className="person" key={p.id}><div className="grow">{p.to?.name || 'Invited'} <span className="muted small">({p.kind === 'team_request' ? 'asked to join' : 'invited'})</span></div></div>)}</>}
           </section>
 
-          {team.isOwner && team.openSlots > 0 && (
+          {team.isOwner && team.openSlots > 0 && !isPro && (
+            <section className="panel upsell">
+              <h2>Invite someone <span className="pill">Pro</span></h2>
+              <p className="muted">Inviting people to a team is a Pro feature. Your existing team and room keep working. <Link to="/plan">Unlock Pro</Link></p>
+            </section>
+          )}
+          {team.isOwner && team.openSlots > 0 && isPro && (
             <section className="panel">
               <h2>Invite someone</h2>
               <p className="small muted">They get an in-app notification{' '}(and an email if they allow it). When they accept they join this team and its private room, and the hackathon is added to their tracker.</p>
