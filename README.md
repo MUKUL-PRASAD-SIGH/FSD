@@ -115,6 +115,8 @@ npm run dev                 # MongoDB + API :5050 + web :5173, all in one termin
 
 Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s), then hourly.
 
+**This quick start is local to one computer.** The example `MONGO_URI` uses `127.0.0.1`, so accounts, roles, and requests are stored in that computer's MongoDB. To share accounts between computers, deploy one public app/API and point it at one persistent shared MongoDB database (Atlas is the usual choice). Every user must open the same public app URL. See [deployment](docs/DEPLOYMENT.md) and [environment setup](docs/ENV_SETUP.md). For a separately hosted client, set `VITE_API_ORIGIN` to that same API in the client build environment; leave it blank when the API serves the client from the same origin.
+
 | First-run detail | |
 |---|---|
 | Generate `JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
@@ -124,6 +126,8 @@ Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s)
 | Everything offline | works without any external key; Google, Gemini and SMTP are optional upgrades ([docs/ENV_SETUP.md](docs/ENV_SETUP.md)) |
 
 **Docker (one machine, production-like):** `npm run docker:up` → http://localhost:5050 (app + MongoDB, health-checked). More in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+**Shared demo deployment:** see the [Atlas + Render setup](docs/DEPLOYMENT.md#3-shared-setup-mongodb-atlas-and-render). The Blueprint keeps secrets out of Git and serves the app and API from one public URL.
 
 ### Commands
 

@@ -37,7 +37,15 @@ export default function Network() {
   const [blocked, setBlocked] = useState([]);
 
   const load = useCallback(() => api.overview().then(setOv).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); window.addEventListener('hackelite:notification', load); return () => window.removeEventListener('hackelite:notification', load); }, [load]);
+  useEffect(() => {
+    load();
+    const poll = setInterval(load, 15000);
+    const onFocus = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('hackelite:notification', load);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { clearInterval(poll); window.removeEventListener('hackelite:notification', load); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
+  }, [load]);
   useEffect(() => { if (isPro) api.recTeammates().then(setSug).catch(() => setSug({ teammates: [] })); }, [isPro, user.social?.discoverable]);
   useEffect(() => {
     if (q.trim().length < 2) { setFound(null); return undefined; }

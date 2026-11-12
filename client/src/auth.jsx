@@ -18,6 +18,18 @@ export function AuthProvider({ children }) {
     api.me().then((r) => setUser(r.user)).catch(() => setToken(null)).finally(() => setReady(true));
   }, [signOut]);
 
+  // Role and account changes made on another device must update this browser's navigation and guards too.
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+    const sync = () => api.me().then((r) => { if (active) setUser(r.user); }).catch(() => {});
+    const onFocus = () => { if (document.visibilityState === 'visible') sync(); };
+    const poll = setInterval(sync, 60000);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { active = false; clearInterval(poll); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); };
+  }, [user?.id]);
+
   const finish = useCallback((r) => { setToken(r.token); setUser(r.user); return r; }, []);
   const refresh = useCallback(() => api.me().then((r) => setUser(r.user)), []);
 

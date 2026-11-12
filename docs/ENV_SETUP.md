@@ -21,6 +21,8 @@ Admins can run the same checks in the browser at **Admin → integrations**. "no
   3. **Connect → Drivers** → copy `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/hackelite_db?retryWrites=true&w=majority`.
 - Check: `npm run integrations:check mongodb` → `connected to hackelite_db`.
 
+Each local `127.0.0.1` address refers to the computer running that process. It does not share data with another computer. For shared accounts, requests, and roles, configure the one public API deployment with the Atlas URI and make all browsers use that same app. `NODE_ENV=production` now requires `MONGO_URI` explicitly.
+
 ### Auth: `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"   # paste as JWT_SECRET
@@ -93,3 +95,4 @@ SERVE_CLIENT=true          # serve client/dist from the API (one process, one or
 - `trust proxy` is set to 1 hop in production (`server/middleware/security.js`); change it if you have more proxies.
 - Run **one** API instance: ingestion and notifier jobs run in-process (see docs/ARCHITECTURE.md §7).
 - Add the production origin to the Google OAuth client's JavaScript origins.
+- Keep the API and MongoDB shared by all users. For a separate static client, set `VITE_API_ORIGIN=https://api.example.com` at build time and set the API's `CLIENT_ORIGIN` to the static client's exact HTTPS origin. The browser and API must both use the same deployment/database.

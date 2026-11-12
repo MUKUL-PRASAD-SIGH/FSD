@@ -1,12 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { api, getToken } from './api.js';
+import { API_ORIGIN, api, getToken } from './api.js';
 import { useAuth } from './auth.jsx';
 import { useToast } from './toast.jsx';
 
 // One live connection per signed-in user. It delivers notifications and chat messages instantly and keeps the nav badges
-// (unread messages, pending requests/invitations) fresh. REST stays the source of truth: if the socket is down, everything
-// still works, it just updates on the next action or reload.
+// (unread messages, pending requests/invitations) fresh. Polling also picks up changes made through another API process.
 const Ctx = createContext({ socket: null, connected: false, counts: { chat: 0, pending: 0 }, refresh: () => {}, setActiveRoom: () => {} });
 export const useRealtime = () => useContext(Ctx);
 
@@ -31,7 +30,7 @@ export function RealtimeProvider({ children }) {
 
   useEffect(() => {
     if (!user) { setSocket(null); setConnected(false); setCounts({ chat: 0, pending: 0 }); return undefined; }
-    const s = io({ auth: { token: getToken() }, transports: ['websocket'], reconnectionDelayMax: 8000 });
+    const s = io(API_ORIGIN || undefined, { auth: { token: getToken() }, transports: ['websocket'], reconnectionDelayMax: 8000 });
     setSocket(s);
     s.on('ready', () => { setConnected(true); refresh(); });
     s.on('disconnect', () => setConnected(false));
@@ -41,7 +40,11 @@ export function RealtimeProvider({ children }) {
     s.on('room:added', () => { window.dispatchEvent(new CustomEvent('hackelite:rooms')); refresh(); });
     s.on('room:removed', () => { window.dispatchEvent(new CustomEvent('hackelite:rooms')); refresh(); });
     refresh();
-    return () => { s.removeAllListeners(); s.close(); clearTimeout(timer.current); };
+    const poll = setInterval(refresh, 15000);
+    const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => { s.removeAllListeners(); s.close(); clearInterval(poll); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); clearTimeout(timer.current); };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setActiveRoom = useCallback((id) => { active.current = id; }, []);
