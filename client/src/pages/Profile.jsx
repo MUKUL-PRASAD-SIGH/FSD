@@ -7,6 +7,8 @@ import { useToast } from '../toast.jsx';
 import ResumeStudio from '../ResumeStudio.jsx';
 import SocialSettings from '../SocialSettings.jsx';
 import { PasswordMeter, passwordOk } from '../forms.jsx';
+import { Avatar, Ring } from '../ui.jsx';
+import './profile.css';
 
 const DOMAINS = ['AI/ML', 'Web Development', 'Data Science', 'Cloud & DevOps', 'Cybersecurity', 'Blockchain & Web3', 'Mobile Development', 'Design', 'Business', 'Competitive Programming', 'Hardware & IoT', 'Software Engineering'];
 const toList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
@@ -52,6 +54,19 @@ function Security() {
       <DeleteAccount />
     </section>
   );
+}
+
+const PF_SECTIONS = [['pf-resume', 'Resume'], ['pf-social', 'Discovery'], ['pf-match', 'Matching'], ['pf-security', 'Security']];
+// Section nav that highlights the section currently in view
+function PfNav() {
+  const [cur, setCur] = useState('pf-resume');
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setCur(e.target.id); }), { rootMargin: '-25% 0px -60% 0px' });
+    PF_SECTIONS.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
+    return () => io.disconnect();
+  }, []);
+  return <nav className="pf-nav" aria-label="Profile sections">{PF_SECTIONS.map(([id, l]) => <a key={id} href={`#${id}`} className={cur === id ? 'on' : ''} aria-current={cur === id ? 'location' : undefined}>{l}</a>)}</nav>;
 }
 
 export default function Profile() {
@@ -102,16 +117,36 @@ export default function Profile() {
   const toggle = (arr = [], v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const r = user.resume;
 
+  const checks = [
+    ['Add at least 3 skills', toList(skills).length >= 3, 'pf-match'], ['Pick an interest', interests.length > 0, 'pf-match'], ['Set your location', !!(loc.city || loc.state), 'pf-match'],
+    ['Add your education', !!edu.level, 'pf-match'], ['Upload a resume', !!(r?.skills?.length || r?.parsedAt), 'pf-resume'], ['Write a short bio', !!bio.trim(), 'pf-match'], ['Add your college', !!college.trim(), 'pf-match'],
+  ];
+  const strength = Math.round((checks.filter((c) => c[1]).length / checks.length) * 100);
+  const removeSkill = (x) => setSkills(toList(skills).filter((y) => y !== x).join(', '));
+
   return (
-    <>
-      <div className="row-between"><h1>Your profile</h1><Link className={`pill ${isPro ? '' : 'warm'}`} to="/plan">{isPro ? 'Pro plan' : 'Free plan · upgrade'}</Link></div>
+    <div className="pf">
+      <section className="pf-hero">
+        <div className="pf-cover" aria-hidden="true" />
+        <div className="pf-id">
+          <Avatar name={user.name} size={92} ring />
+          <div className="pf-who"><h1>{user.name}</h1><p className="muted">{user.email}{college ? ` · ${college}` : ''}</p>
+            <Link className={`pf-plan ${isPro ? 'pro' : ''}`} to="/plan">{isPro ? '✦ Pro plan' : 'Free plan · upgrade'}</Link></div>
+          <div className="pf-strength"><Ring value={strength} size={96} stroke={9} label={`${strength}%`} sub="complete" /><div><b>Profile strength</b>
+            {strength < 100 ? <ul>{checks.filter((c) => !c[1]).slice(0, 3).map(([l, , id]) => <li key={l}><a href={`#${id}`}>+ {l}</a></li>)}</ul> : <p className="muted small">Fully set up. Your picks use everything.</p>}</div></div>
+        </div>
+      </section>
 
-      <ResumeStudio title="Resume" onChange={(u) => u && sync(u)} />
-      <SocialSettings />
+      <div className="pf-layout">
+        <PfNav />
+        <div className="pf-main">
+      <section id="pf-resume" className="pf-sec"><ResumeStudio title="Resume" onChange={(u) => u && sync(u)} /></section>
+      <section id="pf-social" className="pf-sec"><SocialSettings /></section>
 
-      <form className="panel" onSubmit={save}>
+      <form id="pf-match" className="panel pf-form" onSubmit={save}>
         <h2>What we match on</h2>
         <label>Skills <span className="muted small">(comma separated)</span><textarea rows={2} value={skills} onChange={(e) => setSkills(e.target.value)} /></label>
+        {toList(skills).length > 0 && <div className="pf-skills" aria-label="Your skills">{toList(skills).map((x, n) => <span key={x} style={{ '--n': Math.min(n, 12) }}>{x}<button type="button" onClick={() => removeSkill(x)} aria-label={`Remove ${x}`}>×</button></span>)}</div>}
         <fieldset><legend>Interests</legend>
           <div className="chips">{DOMAINS.map((d) => <button type="button" key={d} className={`chip ${interests.includes(d) ? 'on' : ''}`} aria-pressed={interests.includes(d)} onClick={() => setInterests(toggle(interests, d))}>{d}</button>)}</div>
         </fieldset>
@@ -128,25 +163,27 @@ export default function Profile() {
             {['HACKATHON', 'CASE STUDY', 'CONTEST', 'DESIGN'].map((t) => <button type="button" key={t} className={`chip ${prefs.types?.includes(t) ? 'on' : ''}`} aria-pressed={!!prefs.types?.includes(t)} onClick={() => setPrefs({ ...prefs, types: toggle(prefs.types, t) })}>{t.toLowerCase()}</button>)}
           </div>
           <div className="row">
-            <label className="chk"><input type="checkbox" checked={!!prefs.freeOnly} onChange={(e) => setPrefs({ ...prefs, freeOnly: e.target.checked })} /> free entry only</label>
-            <label className="chk"><input type="checkbox" checked={!!prefs.willingToTravel} onChange={(e) => setPrefs({ ...prefs, willingToTravel: e.target.checked })} /> I can travel for events</label>
+            <label className="switch"><input type="checkbox" checked={!!prefs.freeOnly} onChange={(e) => setPrefs({ ...prefs, freeOnly: e.target.checked })} /><i /> free entry only</label>
+            <label className="switch"><input type="checkbox" checked={!!prefs.willingToTravel} onChange={(e) => setPrefs({ ...prefs, willingToTravel: e.target.checked })} /><i /> I can travel for events</label>
             <label>Min prize (₹)<input type="number" min="0" step="10000" value={prefs.minPrizeInr || 0} onChange={(e) => setPrefs({ ...prefs, minPrizeInr: Number(e.target.value) })} /></label>
           </div>
         </fieldset>
         <fieldset><legend>Notifications</legend>
           <div className="row">
-            <label className="chk"><input type="checkbox" checked={!!notify.inApp} onChange={(e) => setNotify({ ...notify, inApp: e.target.checked })} /> in-app alerts</label>
-            <label className="chk"><input type="checkbox" checked={!!notify.email} onChange={(e) => setNotify({ ...notify, email: e.target.checked })} /> email digest</label>
+            <label className="switch"><input type="checkbox" checked={!!notify.inApp} onChange={(e) => setNotify({ ...notify, inApp: e.target.checked })} /><i /> in-app alerts</label>
+            <label className="switch"><input type="checkbox" checked={!!notify.email} onChange={(e) => setNotify({ ...notify, email: e.target.checked })} /><i /> email digest</label>
             <label>Only if match ≥ {notify.minMatch}%<input type="range" min="30" max="95" step="5" value={notify.minMatch} onChange={(e) => setNotify({ ...notify, minMatch: Number(e.target.value) })} /></label>
           </div>
         </fieldset>
         <label>College / institute<input value={college} onChange={(e) => setCollege(e.target.value)} /></label>
         <label>About you<textarea rows={2} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Anything else that should shape your picks" /></label>
         {msg && <p className="ok" role="status">{msg}</p>}{err && <p className="error" role="alert">{err}</p>}
-        <button className="btn primary" disabled={busy}>Save profile</button>
+        <div className="pf-savebar"><span className="muted small">Changes apply to your picks and notifications as soon as you save.</span><button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button></div>
       </form>
-      <Security />
-    </>
+      <div id="pf-security" className="pf-sec"><Security /></div>
+        </div>
+      </div>
+    </div>
   );
 }
 

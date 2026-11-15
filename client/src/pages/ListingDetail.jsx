@@ -19,7 +19,7 @@ export default function ListingDetail() {
   const toast = useToast();
   useEffect(() => { api.listing(id).then((r) => { setD(r.listing); setSaved(r.saved); }).catch((e) => setError(e.message)); }, [id]);
 
-  if (error) return <div className="empty"><h2>Listing not available</h2><p>{error}. It may have closed.</p><Link to="/">Back to browse</Link></div>;
+  if (error) return <div className="empty"><h2>Listing not available</h2><p>{error}. It may have closed.</p><Link to="/browse">Back to browse</Link></div>;
   if (!d) return <p className="muted">Loading…</p>;
   const c = closes(d.deadline);
   const prize = prizeText(d.prize);
@@ -27,7 +27,7 @@ export default function ListingDetail() {
 
   return (
     <article className="detail">
-      <p className="small"><Link to="/">← Browse</Link></p>
+      <p className="small"><Link to="/browse">← Browse</Link></p>
       <div className="card-top"><span className={`pill ${c.tone}`}>{c.text}</span><span className="muted mono">{d.type.toLowerCase()}</span></div>
       <h1>{d.title}</h1>
       <p className="muted">{d.organiser || 'Organiser'} · listed on {d.platform}{d.alsoOn?.length ? <> · also on {d.alsoOn.map((a, i) => <span key={a.url}>{i ? ', ' : ''}<a href={a.url} target="_blank" rel="noreferrer noopener">{a.platform}</a></span>)}</> : null}</p>
@@ -40,7 +40,7 @@ export default function ListingDetail() {
         <div><dt>{KIND[d.deadlineKind] || 'Deadline'}</dt><dd>{fmt(d.deadline)}</dd></div>
         {d.startDate && <div><dt>Event starts</dt><dd>{fmt(d.startDate)}</dd></div>}
         {d.endDate && <div><dt>Event ends</dt><dd>{fmt(d.endDate)}</dd></div>}
-        <div><dt>Format</dt><dd>{d.mode.toLowerCase()}{d.city ? ` · ${d.city}${d.state ? ', ' + d.state : ''}${d.country ? ', ' + d.country : ''}` : ''}</dd></div>
+        <div><dt>Format</dt><dd>{d.mode.toLowerCase()}{d.city ? ` · ${d.city}${d.state ? ', ' + d.state : ''}${d.country && d.country !== '[object Object]' ? ', ' + d.country : ''}` : ''}</dd></div>
         <div><dt>Prize</dt><dd>{prize ? <>{prize.text}{prize.title && <span className="muted small"> ({prize.title})</span>}</> : 'Not stated'}</dd></div>
         <div><dt>Entry</dt><dd>{d.fee}</dd></div>
         {d.teamMax && <div><dt>Team size</dt><dd>{d.teamMin || 1}–{d.teamMax}</dd></div>}

@@ -7,6 +7,7 @@ import { ToastProvider } from './toast.jsx';
 import { RealtimeProvider } from './realtime.jsx';
 import './styles.css';
 import './layer.css';
+import './theme.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -3,16 +3,29 @@ import { Link, useLocation, useNavigate, useSearchParams, Navigate } from 'react
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { GoogleButton, PasswordMeter, passwordOk } from '../forms.jsx';
+import { Emblem } from '../ui.jsx';
+import './auth.css';
 
 const home = (u) => (u.role === 'admin' ? '/admin' : u.role === 'lister' ? '/lister' : '/for-you');
 
 function Shell({ title, sub, children }) {
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <h1>{title}</h1>
-        {sub && <p className="muted">{sub}</p>}
-        {children}
+    <div className="au">
+      <aside className="au-brand" aria-hidden="true">
+        <Emblem size={260} parallax />
+        <h2>Every opportunity.<br /><span>One feed.</span></h2>
+        <ul>
+          <li><b>16</b> sources merged and de-duplicated</li>
+          <li><b>0–100</b> match scores with plain-English reasons</li>
+          <li><b>Live</b> teams, chat and deadline reminders</li>
+        </ul>
+      </aside>
+      <div className="auth-wrap">
+        <div className="auth-card">
+          <h1>{title}</h1>
+          {sub && <p className="muted">{sub}</p>}
+          {children}
+        </div>
       </div>
     </div>
   );

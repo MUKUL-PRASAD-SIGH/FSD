@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Home from './pages/Home.jsx';
+import Browse from './pages/Browse.jsx';
 import ForYou from './pages/ForYou.jsx';
 import Profile from './pages/Profile.jsx';
 import Tracker from './pages/Tracker.jsx';
@@ -20,6 +21,7 @@ import Chat from './pages/Chat.jsx';
 import { useRealtime } from './realtime.jsx';
 import { API_ORIGIN, api } from './api.js';
 import { useToast } from './toast.jsx';
+import Logo from './Logo.jsx';
 
 // Route guards. The server enforces every one of these again; this is only for a sensible UX.
 function Guard({ roles, children }) {
@@ -53,6 +55,8 @@ export default function App() {
   const { user, ready, logout, isPro } = useAuth();
   const { counts } = useRealtime();
   const [notes, reloadNotes] = useNotifications(!!user);
+  const [hideBanner, setHideBanner] = useState(() => { try { return sessionStorage.getItem("hideDevBanner") === "1"; } catch { return false; } });
+  const dismissBanner = () => { setHideBanner(true); try { sessionStorage.setItem("hideDevBanner", "1"); } catch { /* ignore */ } };
   const link = ({ isActive }) => (isActive ? 'active' : '');
   const g = (roles, el) => <Guard roles={roles}>{el}</Guard>;
 
@@ -60,9 +64,9 @@ export default function App() {
     <>
       <a className="skip" href="#main">Skip to content</a>
       <header className="top">
-        <NavLink to="/" className="brand">HACKELITE<span>.ai</span></NavLink>
+        <NavLink to="/" className="brand"><Logo /><b>HackElite<span>.ai</span></b></NavLink>
         <nav aria-label="Main">
-          <NavLink to="/" end className={link}>Browse</NavLink>
+          <NavLink to="/browse" className={link}>Browse</NavLink>
           {user?.role !== 'admin' && user?.role !== 'lister' && <NavLink to="/for-you" className={link}>For you</NavLink>}
           <NavLink to="/ask" className={link}>Ask</NavLink>
           {user && <NavLink to="/assistant" className={link}>Assistant{!isPro && <span className="pill tiny">Pro</span>}</NavLink>}
@@ -78,8 +82,8 @@ export default function App() {
           {user ? (
             <>
               <Bell data={notes} reload={reloadNotes} />
-              <NavLink to="/plan" className="btn ghost">{isPro ? 'Pro' : 'Upgrade'}</NavLink>
-              <NavLink to="/profile" className="btn ghost">{user.name.split(' ')[0]}</NavLink>
+              <NavLink to="/plan" className="btn ghost pro-pill"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z" /></svg>{isPro ? 'Pro' : 'Upgrade'}</NavLink>
+              <NavLink to="/profile" className="btn ghost avatar-btn" aria-label={`Profile: ${user.name}`} title={user.name}>{user.name.trim().charAt(0).toUpperCase()}</NavLink>
               <button className="btn ghost" onClick={logout}>Sign out</button>
             </>
           ) : (
@@ -90,12 +94,13 @@ export default function App() {
           )}
         </div>
       </header>
-      {import.meta.env.DEV && !API_ORIGIN && <div className="banner">Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</div>}
+      {import.meta.env.DEV && !API_ORIGIN && !hideBanner && <div className="banner"><span>Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</span><button className="banner-x" aria-label="Dismiss" onClick={dismissBanner}>×</button></div>}
       <VerifyBanner />
       <main id="main">
         {ready && (
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/browse" element={<Browse />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot" element={<Forgot />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from './ui.jsx';
 import { api } from './api.js';
 import { useToast } from './toast.jsx';
 
@@ -52,8 +53,8 @@ export default function CalendarSync() {
               {s.allowedReminders.map((m) => <button key={m} type="button" className={`chip ${s.reminders.includes(m) ? 'on' : ''}`} aria-pressed={s.reminders.includes(m)} onClick={() => toggleReminder(m)} disabled={busy}>{REMINDER_LABEL[m]}</button>)}
             </div>
           </fieldset>
-          <label className="chk"><input type="checkbox" checked={s.includePicks} disabled={busy} onChange={(e) => run(() => api.calendarUpdate({ includePicks: e.target.checked }))} /> Also add my top recommended hackathons (matching my profile)</label>
-          <p className="small muted">🔒 Anyone with this link can see your calendar, so keep it private. Notes are never included. Google refreshes subscribed calendars every several hours.</p>
+          <label className="switch"><input type="checkbox" checked={s.includePicks} disabled={busy} onChange={(e) => run(() => api.calendarUpdate({ includePicks: e.target.checked }))} /><i /> Also add my top recommended hackathons (matching my profile)</label>
+          <p className="small muted"><Icon name="lock" /> Anyone with this link can see your calendar, so keep it private. Notes are never included. Google refreshes subscribed calendars every several hours.</p>
           <div className="row">
             <button className="link small" disabled={busy} onClick={() => { if (window.confirm('Create a new link? The current one stops working everywhere.')) run(() => api.calendarCreateToken(), 'New link created. Re-add it in your calendar app.'); }}>Generate a new link</button>
             <button className="link small" disabled={busy} onClick={() => { if (window.confirm('Turn off calendar sync? The link stops working.')) run(() => api.calendarRevoke(), 'Calendar sync turned off'); }}>Turn off</button>
