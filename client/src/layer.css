@@ -284,3 +284,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .journey-card:hover, .spotlight-card:hover, .landing-search:focus-within { transform: none; }
   .landing-chip, .journey-card, .spotlight-card, .landing-search { transition: none; }
 }
+
+/* ---- landing sections (ported from the old landing page) ---- */
+.lp-section { margin: 0 0 78px; }
+.lp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.lp-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.lp-card { padding: 22px; border: 1px solid var(--home-line, var(--line)); border-radius: 19px; background: color-mix(in srgb, var(--panel) 78%, transparent); box-shadow: var(--shadow); }
+.lp-card h3 { margin: 0 0 8px; font-size: 1.1rem; }
+.lp-card p { margin: 0 0 12px; color: var(--muted); line-height: 1.55; }
+.lp-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.lp-card li { display: flex; gap: 10px; align-items: baseline; }
+.lp-before li span { color: var(--hot); } .lp-after li span { color: var(--ok); }
+.lp-after { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.lp-icon { display: inline-grid; place-items: center; width: 40px; height: 40px; margin-bottom: 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 16%, transparent); font-size: 1.2rem; }
+.lp-cta { margin: 0 0 60px; padding: clamp(28px, 5vw, 52px); text-align: center; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 26px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--panel)), color-mix(in srgb, var(--accent2) 12%, var(--panel))); }
+.lp-cta h2 { margin: 0 0 8px; font-size: clamp(1.6rem, 3vw, 2.2rem); letter-spacing: -.04em; }
+.lp-cta p { margin: 0 0 18px; color: var(--muted); }

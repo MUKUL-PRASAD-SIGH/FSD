@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import LandingSections from '../LandingSections.jsx';
 import { ListingCard, Empty, SkeletonGrid, closes, prizeText } from '../components.jsx';
 
 const TYPES = ['', 'HACKATHON', 'CODING', 'COMPETITION', 'CASE STUDY', 'QUIZ', 'DESIGN', 'INNOVATION', 'CONTEST'];
@@ -127,6 +128,8 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      <LandingSections user={user} />
 
       <section className="opportunities-section" id="opportunities" aria-labelledby="opportunities-title">
         <div className="opportunity-heading">
