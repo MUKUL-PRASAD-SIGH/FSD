@@ -39,6 +39,7 @@ function buildApp() {
   app.use('/api/lister', require('./routes/lister'));
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/track', require('./routes/track'));
+  app.use('/api/colleges', require('./routes/colleges'));
   if (process.env.SERVE_CLIENT === 'true') serveClient(app);
   app.use(notFound);
   app.use(errorHandler);
@@ -77,6 +78,7 @@ async function migrate() {
   await users.updateMany({ role: 'student' }, { $set: { role: 'user' } });
   await users.updateMany({ password: { $exists: true }, hasPassword: { $exists: false } }, { $set: { hasPassword: true } });
   await Listing.collection.updateMany({ status: { $exists: false } }, { $set: { status: 'published' } });
+  await require('./services/colleges').seed(); // idempotent: only inserts colleges that are missing
 }
 
 // Creates the first admin from ADMIN_EMAIL / ADMIN_PASSWORD. Admins can never be created through the public API.
@@ -99,7 +101,10 @@ async function afterIngest() {
   const { indexListings } = require('./services/rag');
   const { runNotifier } = require('./services/notifier');
   const [indexed, notified] = [await indexListings(), await runNotifier()];
-  return { indexed, notified };
+  // Flag confusing listings and email admins a daily digest when something new needs review
+  const quality = await require('./services/listingQuality').scanOpen();
+  await require('./services/adminAlerts').qualityDigest(quality).catch((e) => console.warn('quality digest failed:', e.message));
+  return { indexed, notified, quality };
 }
 
 async function start() {
@@ -107,6 +112,7 @@ async function start() {
   await connectDB();
   await migrate();
   await ensureAdmin();
+  await require('./services/adminAccess').promoteExisting();
   const app = buildApp();
   const server = app.listen(config.port, () => console.log(`API listening on http://localhost:${config.port}`));
   require('./services/realtime').init(server); // live chat and notifications (Socket.IO on the same port)

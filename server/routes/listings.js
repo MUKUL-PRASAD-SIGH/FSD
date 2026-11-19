@@ -1,8 +1,12 @@
 const router = require('express').Router();
 const Listing = require('../models/Listing');
 const Saved = require('../models/Saved');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, protect } = require('../middleware/auth');
 const { asyncRoute } = require('../utils/http');
+const { userHints } = require('../services/listingQuality');
+const ListingReport = require('../models/ListingReport');
+const { heavyLimiter } = require('../middleware/security');
+const { str } = require('../utils/sanitize');
 
 const clean = (v) => (typeof v === 'string' ? v.trim() : '');
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -49,6 +53,8 @@ const shape = (l) => ({
   tags: l.tags,
   skills: l.skills,
   registered: l.registered,
+  // Things worth double-checking on the organiser page (see services/listingQuality.js); empty for clean listings
+  verify: userHints(l),
 });
 
 // Public JSON API, no key required
@@ -103,6 +109,21 @@ router.get('/:id', optionalAuth, asyncRoute(async (req, res) => {
   }
   const saved = req.user ? await Saved.findOne({ user: req.user._id, listing: l._id }).lean() : null;
   res.json({ listing: shape(l), saved: saved ? { status: saved.status, note: saved.note } : null });
+}));
+
+// POST /api/listings/:id/report { reason, note? }  signed in. One open report per person per listing; admins get an alert.
+router.post('/:id/report', protect, heavyLimiter, asyncRoute(async (req, res) => {
+  const reason = req.body?.reason;
+  if (!ListingReport.REASONS.includes(reason)) return res.status(400).json({ error: `reason must be one of: ${ListingReport.REASONS.join(', ')}` });
+  const l = await Listing.findById(req.params.id).catch(() => null);
+  if (!l || l.status !== 'published') return res.status(404).json({ error: 'Listing not found' });
+  const existing = await ListingReport.findOne({ listing: l._id, user: req.user._id, status: 'open' });
+  if (existing) return res.json({ ok: true, already: true });
+  const report = await ListingReport.create({ listing: l._id, user: req.user._id, reason, note: str(req.body?.note, 500) });
+  await Listing.updateOne({ _id: l._id }, { $inc: { 'quality.reports': 1 } });
+  await require('../services/listingQuality').recheck(l._id);
+  require('../services/adminAlerts').listingReported(l, report, req.user).catch(() => {});
+  res.status(201).json({ ok: true });
 }));
 
 module.exports = router;

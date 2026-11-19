@@ -44,6 +44,7 @@ router.post('/listings', requireApprovedLister, asyncRoute(async (req, res) => {
     organiser: data.organiser || req.user.lister?.organisation || req.user.name,
   });
   audit(req, 'listing.create', { target: listing._id, meta: { title: listing.title } });
+  await require('../services/listingQuality').recheck(listing._id);
   // Fire-and-forget: tell matching users right away (never blocks or fails the request)
   require('../services/notifier').runNotifier().catch((e) => console.error('notifier failed', e.message));
   res.status(201).json({ listing: { ...shape(listing), status: listing.status } });
@@ -64,6 +65,7 @@ router.put('/listings/:id', requireApprovedLister, asyncRoute(async (req, res) =
   Object.assign(l, data, { embedding: undefined, embeddingModel: undefined }); // re-embed on next index
   await l.save();
   audit(req, 'listing.update', { target: l._id });
+  await require('../services/listingQuality').recheck(l._id);
   res.json({ listing: { ...shape(l), status: l.status } });
 }));
 
