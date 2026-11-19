@@ -40,6 +40,7 @@ function buildApp() {
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/track', require('./routes/track'));
   app.use('/api/colleges', require('./routes/colleges'));
+  app.use('/api/sms', require('./routes/sms'));
   if (process.env.SERVE_CLIENT === 'true') serveClient(app);
   app.use(notFound);
   app.use(errorHandler);
@@ -79,6 +80,12 @@ async function migrate() {
   await users.updateMany({ password: { $exists: true }, hasPassword: { $exists: false } }, { $set: { hasPassword: true } });
   await Listing.collection.updateMany({ status: { $exists: false } }, { $set: { status: 'published' } });
   await require('./services/colleges').seed(); // idempotent: only inserts colleges that are missing
+  // Reminders became per channel: replace the old (user, listing, minutes) unique index, which would block an SMS
+  // reminder for a lead time that was already emailed
+  const ReminderLog = require('./models/ReminderLog');
+  await ReminderLog.collection.dropIndex('user_1_listing_1_minutes_1').catch(() => {}); // absent on new databases
+  await ReminderLog.collection.updateMany({ channel: { $exists: false } }, { $set: { channel: 'email' } });
+  await ReminderLog.syncIndexes().catch((e) => console.warn('reminder index sync:', e.message));
 }
 
 // Creates the first admin from ADMIN_EMAIL / ADMIN_PASSWORD. Admins can never be created through the public API.

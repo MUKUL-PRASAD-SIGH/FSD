@@ -30,7 +30,9 @@ const publicUser = (u) => ({
   preferences: u.preferences,
   privacy: { shareQuestions: u.privacy?.shareQuestions !== false, shareUsage: u.privacy?.shareUsage !== false },
   social: { discoverable: !!u.social?.discoverable, headline: u.social?.headline || '', lookingForTeam: !!u.social?.lookingForTeam },
-  notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch, emailReminders: !!u.notify?.emailReminders, emailSocial: u.notify?.emailSocial !== false },
+  notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch, emailReminders: !!u.notify?.emailReminders, emailSocial: u.notify?.emailSocial !== false, smsReminders: !!u.notify?.smsReminders },
+  // the person's own number only (this serializer is never used for other people's profiles)
+  phone: { number: u.phone?.verifiedAt ? u.phone.number : '', verified: !!u.phone?.verifiedAt, channel: u.phone?.channel || 'sms', pending: !!u.phone?.pending },
   resume: u.resume?.parsedAt
     ? {
         fileName: u.resume.fileName,

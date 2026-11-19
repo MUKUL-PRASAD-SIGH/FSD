@@ -15,6 +15,7 @@ const { str, isUrl } = require('../utils/sanitize');
 const { shape } = require('./listings');
 const { audit } = require('../services/audit');
 const colleges = require('../services/colleges');
+const sms = require('../services/sms');
 const adminAlerts = require('../services/adminAlerts');
 const { gaps, GOALS } = require('../services/profileGaps');
 
@@ -82,6 +83,10 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof b.notify.email === 'boolean') u.notify.email = b.notify.email;
     if (typeof b.notify.emailReminders === 'boolean') u.notify.emailReminders = b.notify.emailReminders;
     if (typeof b.notify.emailSocial === 'boolean') u.notify.emailSocial = b.notify.emailSocial;
+    if (typeof b.notify.smsReminders === 'boolean') {
+      if (b.notify.smsReminders && !u.phone?.verifiedAt) return res.status(400).json({ error: 'Verify your phone number first', fields: { phone: 'Verify your phone number first' } });
+      u.notify.smsReminders = b.notify.smsReminders;
+    }
     if (b.notify.minMatch != null) u.notify.minMatch = Math.min(100, Math.max(0, Number(b.notify.minMatch) || 0));
   }
   if (b.onboarding && typeof b.onboarding === 'object') {
@@ -95,6 +100,46 @@ router.put('/profile', asyncRoute(async (req, res) => {
     await colleges.moveUser(collegeMove.from, collegeMove.to).catch(() => {});
     if (collegeMove.created) adminAlerts.newCollege(collegeMove.to, u).catch(() => {});
   }
+  res.json({ user: publicUser(u) });
+}));
+
+// ---- Phone for SMS / WhatsApp reminders: send a one-time code, confirm it, or remove the number ----------------------
+// Codes are sent by Twilio Verify. At most 3 code requests per person per hour (on top of the route rate limit).
+router.post('/phone/start', heavyLimiter, asyncRoute(async (req, res) => {
+  const phone = sms.normalizePhone(req.body?.phone);
+  if (!phone) return res.status(400).json({ error: 'Enter a valid mobile number, e.g. 98765 43210 or +91 98765 43210', fields: { phone: 'Invalid number' } });
+  const channel = req.body?.channel === 'whatsapp' ? 'whatsapp' : 'sms';
+  const u = req.user;
+  const recent = (u.phone?.codeSends || []).filter((d) => Date.now() - new Date(d).getTime() < 3600000);
+  if (recent.length >= 3) return res.status(429).json({ error: 'Too many codes requested. Try again in an hour.' });
+  const taken = await User.exists({ _id: { $ne: u._id }, 'phone.number': phone, 'phone.verifiedAt': { $ne: null } });
+  if (taken) return res.status(409).json({ error: 'That number is already verified on another account.' });
+  await sms.startVerification(phone, channel);
+  u.phone.pending = phone; u.phone.channel = channel; u.phone.codeSends = [...recent, new Date()];
+  await u.save();
+  audit(req, 'phone.code_sent', { meta: { to: sms.mask(phone), channel } });
+  res.json({ ok: true, sentTo: sms.mask(phone), channel });
+}));
+
+router.post('/phone/verify', heavyLimiter, asyncRoute(async (req, res) => {
+  const u = req.user;
+  const code = String(req.body?.code || '').replace(/\D/g, '');
+  if (!u.phone?.pending) return res.status(400).json({ error: 'Request a code first' });
+  if (!/^\d{4,10}$/.test(code)) return res.status(400).json({ error: 'Enter the code from the message', fields: { code: 'Invalid code' } });
+  if (!(await sms.checkVerification(u.phone.pending, code))) return res.status(400).json({ error: 'That code is wrong or has expired', fields: { code: 'Wrong code' } });
+  u.phone.number = u.phone.pending; u.phone.pending = ''; u.phone.verifiedAt = new Date(); u.phone.codeSends = [];
+  if (req.body?.enableReminders !== false) u.notify.smsReminders = true;
+  await u.save();
+  audit(req, 'phone.verified', { meta: { to: sms.mask(u.phone.number), channel: u.phone.channel } });
+  res.json({ user: publicUser(u) });
+}));
+
+router.delete('/phone', asyncRoute(async (req, res) => {
+  const u = req.user;
+  u.phone = { number: '', pending: '', verifiedAt: undefined, channel: 'sms', codeSends: [] };
+  u.notify.smsReminders = false;
+  await u.save();
+  audit(req, 'phone.removed');
   res.json({ user: publicUser(u) });
 }));
 

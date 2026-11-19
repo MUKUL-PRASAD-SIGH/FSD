@@ -30,6 +30,17 @@ const config = {
   adminEmails: [...new Set([...list(process.env.ADMIN_EMAILS).map((e) => e.toLowerCase()), (process.env.ADMIN_EMAIL || '').toLowerCase()].filter(Boolean))],
   adminPassword: process.env.ADMIN_PASSWORD || '',
   smtpUrl: process.env.SMTP_URL || '',
+  // Twilio (optional): SMS / WhatsApp deadline reminders and phone verification. See docs/ENV_SETUP.md "SMS and WhatsApp".
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID || '', // Twilio Verify service for phone OTPs
+    messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || '', // preferred sender for SMS (handles sender IDs / DLT)
+    smsFrom: process.env.TWILIO_SMS_FROM || '', // alternative to a messaging service: a Twilio number or approved sender ID
+    whatsappFrom: process.env.TWILIO_WHATSAPP_FROM || '', // e.g. +14155238886 (sandbox) or your approved WhatsApp sender
+    defaultCountryCode: process.env.SMS_DEFAULT_COUNTRY_CODE || '+91',
+    dailyCap: Number(process.env.SMS_DAILY_CAP_PER_USER) || 4,
+  },
   mailFrom: process.env.MAIL_FROM || 'HackElite <no-reply@hackelite.local>',
   appUrl: process.env.APP_URL || list(process.env.CLIENT_ORIGIN || process.env.RENDER_EXTERNAL_URL || 'http://localhost:5173')[0],
   disableIngest: process.env.DISABLE_INGEST === 'true',

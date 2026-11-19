@@ -61,6 +61,15 @@ const userSchema = new mongoose.Schema(
       maxTravelKm: { type: Number, default: 0 }, // 0 = online/local only, otherwise "willing to travel anywhere in country" flag below
       willingToTravel: { type: Boolean, default: false },
     },
+    // Mobile number for SMS / WhatsApp reminders. Only set after a one-time code proves the person has the phone.
+    // Never shown to other users or in admin analytics.
+    phone: {
+      number: { type: String, default: '' }, // E.164, e.g. +919876543210
+      verifiedAt: Date,
+      channel: { type: String, enum: ['sms', 'whatsapp'], default: 'sms' },
+      pending: { type: String, default: '' }, // number a code was sent to, until it is confirmed
+      codeSends: { type: [Date], default: [] }, // recent code requests (rate limit)
+    },
     // First-run setup (client /welcome): when it was finished or skipped, and what the person is here for
     onboarding: {
       completedAt: Date,
@@ -86,6 +95,7 @@ const userSchema = new mongoose.Schema(
       email: { type: Boolean, default: false },
       minMatch: { type: Number, default: 55, min: 0, max: 100 },
       emailReminders: { type: Boolean, default: false }, // email me before tracked deadlines (needs a verified email)
+      smsReminders: { type: Boolean, default: false }, // SMS / WhatsApp me before tracked deadlines (needs a verified phone)
       emailSocial: { type: Boolean, default: true }, // email me about connection requests and team/room invites
       lastRunAt: { type: Date, default: Date.now },
     },

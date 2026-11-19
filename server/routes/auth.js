@@ -46,7 +46,7 @@ async function notifyAdmins(user) {
 }
 
 router.get('/config', (_req, res) =>
-  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl, plansEnabled: config.plansEnabled })
+  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl, plansEnabled: config.plansEnabled, smsChannels: require('../services/sms').enabled() ? require('../services/sms').channels() : [] })
 );
 
 router.post('/password-check', authLimiter, (req, res) => {
