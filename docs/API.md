@@ -160,9 +160,23 @@ Base URL: `http://localhost:5050` in development (the Vite dev server proxies `/
 | POST | `/api/admin/ingest/run` | Run a full sync now (one at a time) |
 | GET | `/api/admin/integrations` | Real request to every configured integration (Gemini, SMTP, Google, Kaggle, clist, MongoDB); secrets never included |
 | POST | `/api/admin/notifier/run` | Run the notification generator now |
+| GET | `/api/admin/analytics?days=7\|30\|90` | Dashboard bundle: overview KPIs, per-day series (active users, minutes, signups, page/listing views, Register clicks), most viewed / clicked / saved listings, top searches, top pages, time spent per user, funnel |
+| GET | `/api/admin/analytics/breakdowns?days=` | Users by role, plan, status, education, college, city, skill; listings and listing views by type, source, mode; chat counts (never message text) |
+| GET | `/api/admin/analytics/users/:q` | Look up people by name or email: profile basics plus their time, views, clicks, tracker and chat counts |
+| POST | `/api/admin/assistant` | Admin analytics AI. `{ question, history? }` → `{ answer, mode, planner, tools, data }`. Answers only from fixed read-only analytics queries (see [SECURITY.md](SECURITY.md#admin-analytics-and-the-ai-boundary)); every question is audited as `admin.assistant` |
+
+## Analytics intake (`/api/track`) — write-only
+Nothing here returns stored data. Reading is admin-only (above).
+
+| Method | Path | Auth | What it does |
+|---|---|---|---|
+| POST | `/api/track` | optional | `{ type: 'page_view'\|'listing_view'\|'register_click'\|'search', path?, listingId?, query? }` → `204`. The path is stored without query string. Signed-out visitors and users with `privacy.shareUsage = false` are stored without a user id |
+| POST | `/api/track/heartbeat` | required | `{ seconds }` (capped at 60 per beat) → `204`. Adds visible time to today's `UsageDay` row; skipped for opted-out users |
 
 ## Health
+A Postman collection with assertions for these and the main endpoints is in [postman/](postman/README.md).
+
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/api/health` | Liveness: the process is up |
+| GET | `/api/health` | Liveness: the process is up. `{ ok, time, localDb }`; `localDb` is `false` when the database is shared (e.g. Atlas) |
 | GET | `/api/health/ready` | Readiness: `200 { db: "up" }` only when MongoDB is connected, otherwise `503`. Use this for load balancers; the Docker `HEALTHCHECK` does |

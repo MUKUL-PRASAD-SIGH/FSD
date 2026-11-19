@@ -37,6 +37,26 @@ Every control below is either covered by an automated test (✅ test) or is conf
 | **Cache isolation** | every personalised route sends `Cache-Control: private, no-store` and `Vary: Authorization`; responses carry an `X-Request-Id` for tracing | `middleware/ops.js` | ✅ test |
 | **Recommendation privacy** | picks, resume analysis, saved items and notifications are keyed on the verified token subject; no endpoint takes a user id; one user's resume never influences another's results | `routes/me.js`, `services/rag.js` | ✅ test (two users, different resumes) |
 | **LLM safety** | assistant answers only from retrieved context; listing text is untrusted; no tools/actions are exposed to the model | `services/rag.js` | ✅ test (injection text in a listing is not followed) |
+| **Admin vs user AI** | the user AI (Pro assistant, event agent) cannot reach admin analytics: no import path, a pre-model guardrail refuses questions about other users, platform data, internals or credentials, and the system prompts repeat the rule. The admin AI is admin-only, runs fixed read-only queries only, and its output is stripped of credential and private fields. Details below | `services/aiGuard.js`, `services/adminAssistant.js`, `services/analytics.js` | ✅ test (`analytics.test.js`) |
+| **Usage analytics privacy** | events store the path without query string; signed-out and opted-out (`privacy.shareUsage = false`) activity is anonymous and no time is recorded for opted-out users; analytics are deleted with the account and expire (events 180 d, daily time 365 d) | `routes/track.js`, `models/Activity.js`, `models/UsageDay.js` | ✅ test |
+
+## Admin analytics and the AI boundary
+
+There are two AIs, and they never share data.
+
+| | User AI | Admin AI |
+|---|---|---|
+| Endpoints | `/api/assistant/chat` (Pro), `/api/listings/:id/ask` | `/api/admin/assistant` |
+| Who | signed-in users | `role: admin` only (`protect` + `requireRole('admin')` on the whole router) |
+| Can see | public listing data, event pages, the asking user's **own** profile and resume | aggregate analytics + per-user engagement (name, email, role, plan, college, city, skills, minutes, views, clicks, tracker and chat **counts**) |
+| Can never see | anything about other users, analytics, admin data | passwords/hashes, any token, resume text, chat message text, anyone's private AI conversations |
+
+How the wall is built, layer by layer:
+1. **Structure.** The user-AI modules never import `services/analytics.js`, `services/adminAssistant.js`, `models/Activity.js`, `models/UsageDay.js`, `models/AuditLog.js` or `routes/admin.js`. A test loads the user AI in a fresh process and fails if any of them end up in the module graph.
+2. **Guardrail before the model.** `services/aiGuard.js` refuses requests about other users, platform statistics, internals, credentials, and prompt-injection phrasing before any retrieval or model call; refused questions are not stored. It only fires on platform or other-person context, so questions like "Is there a database track?" or "Do I need an OpenAI API key?" still work (both kinds are tested).
+3. **Prompt rule.** Both user-AI system prompts say the model has no access to users, analytics, admin tools, databases or credentials.
+4. **Admin AI cannot write queries.** It picks up to three tools from a fixed registry (Gemini when configured, keyword rules otherwise); unknown tools and undeclared arguments proposed by the model are dropped. Each tool is a fixed aggregation with clamped arguments, explicit field projections, and a final pass that strips any key looking like a password, token, hash, secret, resume or embedding.
+5. **Audit.** Every admin AI question is logged (`admin.assistant`, with the tools it used).
 
 ## Known gaps and residual risks (honest list)
 
@@ -47,8 +67,9 @@ Every control below is either covered by an automated test (✅ test) or is conf
 5. **TLS is not terminated by the app.** Run behind HTTPS (reverse proxy / platform). HSTS is enabled only when `NODE_ENV=production`.
 6. **Unofficial third-party endpoints** are fetched server-side (fixed hosts only, no user-supplied URLs → no SSRF surface). They can change or disappear.
 7. **Resume text is stored in MongoDB** (needed for personalisation). Enable disk encryption / Atlas encryption at rest, and restrict database network access.
-8. **Gemini mode** sends retrieved listing text and resume excerpts to Google. Disclose this to users before enabling it.
-9. Dependencies should be audited regularly (`npm audit`) and pinned in CI.
+8. **Gemini mode** sends retrieved listing text and resume excerpts to Google. Disclose this to users before enabling it. For the admin AI it sends aggregate analytics and the per-user engagement rows a question returns (names and emails included); keep Gemini off for the admin AI if that is not acceptable.
+9. **Usage tracking is on by default** (opt-out in Profile → Privacy). If you need opt-in consent (e.g. GDPR), flip the `privacy.shareUsage` default to `false` in `models/User.js` and say so in your privacy notice. The keyword guardrail is a second layer, not the boundary: a cleverly phrased question may get past it, but the user AI still has no access to the data.
+10. Dependencies should be audited regularly (`npm audit`) and pinned in CI.
 
 ## Reporting
 Open a private issue with reproduction steps. Do not include real user data.
