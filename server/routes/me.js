@@ -14,6 +14,9 @@ const { publicUser } = require('../utils/serialize');
 const { str, isUrl } = require('../utils/sanitize');
 const { shape } = require('./listings');
 const { audit } = require('../services/audit');
+const colleges = require('../services/colleges');
+const adminAlerts = require('../services/adminAlerts');
+const { gaps, GOALS } = require('../services/profileGaps');
 
 // Resumes are parsed in memory and never written to disk; only extracted fields are stored.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
@@ -34,7 +37,15 @@ router.use(protect);
 router.put('/profile', asyncRoute(async (req, res) => {
   const b = req.body || {};
   const u = req.user;
-  for (const [k, max] of [['name', 80], ['college', 160], ['bio', 600]]) if (typeof b[k] === 'string' && b[k].trim()) u[k] = str(b[k], max);
+  for (const [k, max] of [['name', 80], ['bio', 600]]) if (typeof b[k] === 'string' && b[k].trim()) u[k] = str(b[k], max);
+  // College: matched to the shared directory; a missing one is added (visible to the next user, queued for admin review)
+  let collegeMove = null;
+  if (typeof b.college === 'string' && b.college.trim()) {
+    const r = await colleges.resolve(b.college, u);
+    if (r.error) return res.status(400).json({ error: r.error, fields: { college: r.error } });
+    if (r.name !== u.college) collegeMove = { from: u.college, to: r.college, created: r.created };
+    u.college = r.name;
+  }
   if (typeof b.bio === 'string') u.bio = str(b.bio, 600);
   for (const k of ['githubUrl', 'linkedinUrl']) if (typeof b[k] === 'string') u[k] = b[k] && isUrl(b[k]) ? b[k].slice(0, 300) : '';
   if (Array.isArray(b.skills)) u.skills = uniq(b.skills);
@@ -49,9 +60,10 @@ router.put('/profile', asyncRoute(async (req, res) => {
   }
   if (b.preferences && typeof b.preferences === 'object') {
     const p = b.preferences;
-    u.preferences.modes = oneOf(p.modes, ['ONLINE', 'OFFLINE', 'HYBRID']);
-    u.preferences.types = oneOf(p.types, ['HACKATHON', 'CASE STUDY', 'CONTEST', 'CODING', 'INNOVATION', 'DESIGN', 'COMPETITION', 'QUIZ']);
-    u.preferences.cities = uniq(p.cities, 10);
+    // only the keys that were sent change, so partial updates (onboarding steps) never wipe other preferences
+    if (Array.isArray(p.modes)) u.preferences.modes = oneOf(p.modes, ['ONLINE', 'OFFLINE', 'HYBRID']);
+    if (Array.isArray(p.types)) u.preferences.types = oneOf(p.types, ['HACKATHON', 'CASE STUDY', 'CONTEST', 'CODING', 'INNOVATION', 'DESIGN', 'COMPETITION', 'QUIZ']);
+    if (Array.isArray(p.cities)) u.preferences.cities = uniq(p.cities, 10);
     if (typeof p.freeOnly === 'boolean') u.preferences.freeOnly = p.freeOnly;
     if (typeof p.willingToTravel === 'boolean') u.preferences.willingToTravel = p.willingToTravel;
     if (p.minPrizeInr != null) u.preferences.minPrizeInr = Math.min(1e8, Math.max(0, Number(p.minPrizeInr) || 0));
@@ -72,10 +84,22 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof b.notify.emailSocial === 'boolean') u.notify.emailSocial = b.notify.emailSocial;
     if (b.notify.minMatch != null) u.notify.minMatch = Math.min(100, Math.max(0, Number(b.notify.minMatch) || 0));
   }
+  if (b.onboarding && typeof b.onboarding === 'object') {
+    if (Array.isArray(b.onboarding.goals)) u.onboarding.goals = b.onboarding.goals.filter((g) => GOALS.includes(g)).slice(0, GOALS.length);
+    if (b.onboarding.complete === true) u.onboarding.completedAt = new Date();
+    if (b.onboarding.skip === true && !u.onboarding.completedAt) u.onboarding.skippedAt = new Date();
+  }
   // role, plan, lister.approvalStatus and tokenVersion are deliberately NOT assignable here
   await u.save();
+  if (collegeMove) {
+    await colleges.moveUser(collegeMove.from, collegeMove.to).catch(() => {});
+    if (collegeMove.created) adminAlerts.newCollege(collegeMove.to, u).catch(() => {});
+  }
   res.json({ user: publicUser(u) });
 }));
+
+// What the recommender still needs from this person (drives the /welcome onboarding)
+router.get('/onboarding', asyncRoute(async (req, res) => res.json({ ...gaps(req.user), goalOptions: GOALS })));
 
 // ---- Resume parsing + indexing: Pro only -------------------------------------------------
 router.post('/resume', requirePro, heavyLimiter, upload.single('resume'), asyncRoute(async (req, res) => {
