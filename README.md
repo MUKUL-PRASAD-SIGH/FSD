@@ -11,7 +11,7 @@ an AI agent for every event, calendar sync, and private team chat, all on one Mo
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-realtime-010101?logo=socketdotio)
-![Tests](https://img.shields.io/badge/tests-124%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-137%20passing-brightgreen)
 ![E2E](https://img.shields.io/badge/live%20end--to--end-41%20checks-brightgreen)
 ![Audit](https://img.shields.io/badge/npm%20audit-0%20vulnerabilities-brightgreen)
 
@@ -126,7 +126,7 @@ Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s)
 |---|---|
 | `npm run dev` | MongoDB + API + web with hot reload |
 | `npm run dev:nodb` | API + web only (bring your own MongoDB) |
-| `npm test` | 124 tests: unit, integration, in-process journey (real MongoDB, real WebSockets) |
+| `npm test` | 137 tests: unit, integration, in-process journey (real MongoDB, real WebSockets) |
 | `npm run e2e` | **live end-to-end**: boots the real server process and runs the 41-check product journey |
 | `npm run verify` | tests + client build + live e2e (the gate before merging) |
 | `npm run build` | production client build |
@@ -171,7 +171,7 @@ The full tour with file paths and low-level mechanics is in **[docs/CODEBASE_GUI
 .
 ├── client/            React 19 + Vite app (pages, chat, calendar, resume studio, live realtime)
 ├── server/            Node + Express API
-│   ├── routes/        HTTP layer (15 files, 119 routes)
+│   ├── routes/        HTTP layer (16 files, 123 routes)
 │   ├── services/      business logic: recommender, rag, teams, chat, calendar, pageAgent, ingest/ …
 │   ├── models/        16 Mongoose schemas
 │   ├── middleware/    auth · security · ops
@@ -220,7 +220,7 @@ Node.js · Express 4 · MongoDB/Mongoose · React 19 · Vite · React Router · 
 |---|---|
 | **[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md)** | **start here**: every feature, file paths, low-level mechanics, demo script, likely questions |
 | [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) | launch blockers, leak review, scaling limits, SMS, next features |
-| [docs/API.md](docs/API.md) | all 119 routes with access rules + WebSocket protocol |
+| [docs/API.md](docs/API.md) | all 123 routes with access rules + WebSocket protocol |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | flows, recommender, ingestion, RAG, operations |
 | [docs/SECURITY.md](docs/SECURITY.md) | controls, tests, known gaps |
 | [docs/SOCIAL.md](docs/SOCIAL.md) | network, teams, chat, Free vs Pro |

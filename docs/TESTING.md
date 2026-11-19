@@ -38,7 +38,7 @@ A reachable MongoDB: `MONGO_URI` (default `mongodb://127.0.0.1:27017`). No Mongo
 | `engine.test.js`, `resume-pdf.test.js` | 6 + 4 | resume text analysis; real PDF and DOCX fixtures; buffer-view regression; unreadable PDF → 400 |
 | `ask-place.test.js` | 2 | place parsing and the hard place filter |
 
-`npm test` reports 124 because node counts sub-tests (the journey's phases). Fixtures: `tests/fixtures/resume.pdf` (a real Chromium-rendered PDF) and `resume.docx`.
+`npm test` reports 137 (1 skipped when the client is not built) because node counts sub-tests (the journey's phases). Fixtures: `tests/fixtures/resume.pdf` (a real Chromium-rendered PDF) and `resume.docx`.
 
 ## The product journey (what `npm run e2e` checks)
 

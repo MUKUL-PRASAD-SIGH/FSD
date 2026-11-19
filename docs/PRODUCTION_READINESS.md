@@ -23,7 +23,7 @@
 
 ## Blockers before inviting the public
 
-1. **Run the full test suite once.** All 10 database-free logic checks pass and the client builds, but the full server suite (131 tests including the 7 new ones in `platform.test.js`) could not run on this machine today: Windows was paging heavily with under 1 GB of RAM free and the test database could not start. Push the branch (CI runs everything on a clean machine) or free memory and run `npm test`.
+1. ~~**Run the full test suite once.**~~ ✅ Done in CI on 19 November 2026 (PR #1): 137 tests, 136 pass, 0 fail, 1 skipped (SPA test that needs a built client in that job), plus the live end-to-end journey (41/41 checks), dependency audit, client build and Docker image build.
 2. **Real hosting tier.** Render's free plan sleeps after inactivity (first request after sleep takes tens of seconds) and Atlas M0 is a shared 512 MB cluster without backups. For real users: a paid always-on instance, and an Atlas tier with backups.
 3. **Atlas network access for the host.** You allowed your own IP. The hosting provider connects from different addresses, so either add its outbound IPs or use `0.0.0.0/0` with a long, unique database password and a database user limited to this one database.
 4. **Email on your own domain.** Password reset, verification and admin alerts all need email, and production now refuses to start without `SMTP_URL`. Gmail SMTP works but has low daily sending limits and weak deliverability. Use a transactional provider (Brevo, Resend, Amazon SES) with SPF/DKIM on your domain.

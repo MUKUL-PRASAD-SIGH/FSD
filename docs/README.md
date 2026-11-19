@@ -7,7 +7,7 @@ Start with the row that matches what you want to do.
 | **Understand the whole project** (and explain it to someone) | [CODEBASE_GUIDE.md](CODEBASE_GUIDE.md): feature-by-feature with file paths, low-level mechanics, demo script, viva questions |
 | **Run it** locally or in Docker | [README](../README.md#quick-start) → [ENV_SETUP.md](ENV_SETUP.md) for keys |
 | **Deploy it** | [DEPLOYMENT.md](DEPLOYMENT.md): Docker, reverse proxy + WebSockets, env checklist, scaling limits, go-live list |
-| **Call the API** | [API.md](API.md): all 119 routes with access rules, plus the WebSocket protocol |
+| **Call the API** | [API.md](API.md): all 123 routes with access rules, plus the WebSocket protocol |
 | **Test it** | [TESTING.md](TESTING.md): the layers, every test file, the live end-to-end run. Postman: [postman/](postman/README.md) |
 | **Know how it is designed** | [ARCHITECTURE.md](ARCHITECTURE.md): flows, recommendation engine, ingestion, RAG, operations, scaling trade-offs |
 | **Review security and privacy** | [SECURITY.md](SECURITY.md): every control with the test that proves it, plus the honest list of gaps |
