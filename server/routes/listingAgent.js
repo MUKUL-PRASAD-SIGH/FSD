@@ -6,6 +6,7 @@ const { heavyLimiter } = require('../middleware/security');
 const { asyncRoute } = require('../utils/http');
 const agent = require('../services/pageAgent');
 const community = require('../services/communityQuestions');
+const aiGuard = require('../services/aiGuard');
 
 const loadListing = (id) => Listing.findById(id).lean().catch(() => null);
 const published = (l) => l && l.status === 'published';
@@ -22,6 +23,9 @@ router.post('/:id/ask', protect, heavyLimiter, asyncRoute(async (req, res) => {
   const history = (Array.isArray(req.body?.history) ? req.body.history : [])
     .slice(-4).filter((h) => h && ['user', 'assistant'].includes(h.role) && typeof h.text === 'string').map((h) => ({ role: h.role, text: h.text.slice(0, 400) }));
 
+  // Refused before any crawl or model call; not saved to history or the community tally
+  const guard = aiGuard.check(question);
+  if (guard.blocked) return res.json({ answer: guard.message, mode: 'refused', refused: true, reason: guard.reason, sources: [], note: null, sharedAnonymously: false });
   const out = await agent.ask(listing, question, history);
   await UserQuery.create({ user: req.user._id, listing: listing._id, question, answer: out.answer.slice(0, 1500) }).catch(() => {});
   const shared = req.user.privacy?.shareQuestions !== false ? await community.record(listing._id, question) : false;
