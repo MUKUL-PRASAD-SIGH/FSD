@@ -69,12 +69,13 @@ Copy `.env.example` to `.env` (git-ignored). Where to get each external key, ste
 | `NODE_ENV` | `production` |
 | `MONGO_URI` | your MongoDB (Atlas recommended: `mongodb+srv://…`) |
 | `JWT_SECRET` | ≥ 32 random characters. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| `PRO_ACTIVATION_KEYS` | at least one key; **change the public demo key** |
+| `SMTP_URL` | real email: password reset, verification and admin alerts do not work without it |
 | `CLIENT_ORIGIN` | exact browser origin(s), comma separated, never `*` |
-| `APP_URL` | the public site URL (used in emails and calendar links) |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first admin, created on start; password must satisfy the policy |
+| `APP_URL` | the public `https://` site URL (used in emails and calendar links) |
+| `ADMIN_EMAILS` (or `ADMIN_EMAIL` + `ADMIN_PASSWORD`) | who is admin; `ADMIN_EMAILS` promotes on verified sign-in and receives alerts (only a warning if missing) |
+| `PRO_ACTIVATION_KEYS` | only when `PLANS_ENABLED=true`; never the public demo key |
 
-**Strongly recommended:** `SMTP_URL` + `MAIL_FROM` (verification, reset, reminders, invites), `GOOGLE_CLIENT_ID` (Google sign-in; add your site under *Authorised JavaScript origins*), `GEMINI_API_KEY` (fluent assistant/agent answers and better embeddings).
+**Strongly recommended:** `MAIL_FROM` on your own domain, `GOOGLE_CLIENT_ID` (Google sign-in; add your site under *Authorised JavaScript origins*), `GEMINI_API_KEY` (fluent assistant/agent answers and better embeddings).
 
 **Optional:** `KAGGLE_*`, `CLIST_*` (two more sources), `INGEST_INTERVAL_MIN`, `ENABLED_SOURCES`, `DISABLE_INGEST` (for read-only replicas).
 
@@ -144,11 +145,12 @@ server {
 ## 9. Go-live checklist
 
 - [ ] `npm run verify` is green on the commit you deploy
-- [ ] `NODE_ENV=production`, strong `JWT_SECRET`, **changed** `PRO_ACTIVATION_KEYS`, real `ADMIN_*` password
+- [ ] `NODE_ENV=production`, strong `JWT_SECRET`, `ADMIN_EMAILS` set, `PLANS_ENABLED` as intended
+- [ ] `npm run secrets` clean, and no old credentials in any git ref you push (`git push --mirror` would publish local refs too)
 - [ ] HTTPS, WebSocket upgrade, correct `CLIENT_ORIGIN` and `APP_URL`
 - [ ] MongoDB is private (VPC / IP allow-list), backups scheduled
 - [ ] SMTP verified with `npm run integrations:check smtp` (your own domain, SPF/DKIM set up)
 - [ ] Google OAuth origin added, consent screen published
 - [ ] `npm audit` clean (CI enforces high severity)
-- [ ] Privacy policy mentions: crawling event pages, anonymous question counts (opt-out), Gemini data sharing if enabled, email reminders ([CRAWLER.md](CRAWLER.md))
+- [ ] The [bracketed] placeholders on `/privacy` and `/terms` are replaced and the text reviewed for your jurisdiction (e.g. India's DPDP Act 2023). It already mentions: crawling event pages, anonymous question counts (opt-out), Gemini data sharing if enabled, email reminders ([CRAWLER.md](CRAWLER.md))
 - [ ] You chose a licence for the repository

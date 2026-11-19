@@ -15,7 +15,7 @@ an AI agent for every event, calendar sync, and private team chat, all on one Mo
 ![E2E](https://img.shields.io/badge/live%20end--to--end-41%20checks-brightgreen)
 ![Audit](https://img.shields.io/badge/npm%20audit-0%20vulnerabilities-brightgreen)
 
-[**Quick start**](#-quick-start) · [**Features**](#-features) · [**Free vs Pro**](#-free-vs-pro) · [**Architecture**](#-how-it-works) · [**Docs**](#-documentation)
+[**Quick start**](#-quick-start) · [**Features**](#-features) · [**Everything free**](#-everything-is-free) · [**Architecture**](#-how-it-works) · [**Docs**](#-documentation)
 
 <br>
 
@@ -43,6 +43,8 @@ Hackathons, case competitions and coding contests are scattered across Devpost, 
 - **Ask in plain English**: *"offline hackathons in pune closing soon with 1L+ prize"*. A named place is a hard filter, so Bangalore never returns Dhaka
 
 ### 🎯 Recommendations that explain themselves
+- **1-minute onboarding** that feels like a game: a live *match power* meter, and it only asks what your resume didn't already tell us (city, college, year, skills, interests, format)
+- **College directory** with 100+ Bengaluru colleges and aliases (RVCE, PESU, BMSCE…); a missing college can be added and shows up for the next student
 - **Resume Studio**: drop a PDF/DOCX once; skills, interests and graduation year are inferred (parsed in memory, the file is never stored)
 - **Explainable 0-100 score** from an 8-criterion rubric: skills, semantic fit, location, interests, preferences, eligibility, timing, prize-vs-competition
 - Hard filters hide events you **cannot enter** (education level, graduation batch)
@@ -62,11 +64,13 @@ Hackathons, case competitions and coding contests are scattered across Devpost, 
 ### 👥 Team up
 - **Connect** with people (opt-in discovery, never shows your email), **live DMs** over WebSockets
 - **Teams with a private room**, invites by connection or email, tracker **Team up** button
-- **Pro**: teammate and open-team recommendations (complementary skills, shared hackathons), plain-English people search, idea voting
+- Teammate and open-team recommendations (complementary skills, shared hackathons), plain-English people search, idea voting
 - Live notifications, unread badges, block/leave controls
 
 ### 🛡️ Built to be trusted
-- Revocable JWT sessions, lockout, breach-checked passwords, SSRF/NoSQL/XSS defences
+- Revocable JWT sessions, lockout, breach-checked passwords, SSRF/NoSQL/XSS defences, secret scanning in CI
+- **Listings you can trust**: confusing listings are flagged automatically ("please double-check the dates"), anyone can report a problem, and admins get a review queue plus email alerts
+- **Admin console**: analytics (time on platform, most viewed, funnel), an analytics AI that can't see private data, and moderation
 - **Personal data stays private**, proven with two-user tests; full account erasure
 
 </td>
@@ -82,24 +86,11 @@ Hackathons, case competitions and coding contests are scattered across Devpost, 
 | **Network: requests, people, suggestions**<br><img src="docs/assets/network.png" width="440"> | **Live private chat**<br><img src="docs/assets/chat.png" width="440"> |
 | **Team room, invites and idea board**<br><img src="docs/assets/team-room.png" width="440"> | **Dark mode and mobile**<br><img src="docs/assets/home-dark.png" width="300"> <img src="docs/assets/mobile-home.png" width="110"> |
 
-## 💎 Free vs Pro
+## 💎 Everything is free
 
-| | **Free** | **Pro** |
-|---|:--:|:--:|
-| Browse, search, filter, expand cards, Ask in plain English | ✅ | ✅ |
-| Tracker, Register → tracker, notifications, **email reminders** | ✅ | ✅ |
-| Add to Google/Outlook/Apple + **live calendar feed** | ✅ | ✅ |
-| Ask any hackathon (per-event agent) | ✅ | ✅ |
-| Connect with people, **live direct messages**, block | ✅ | ✅ |
-| **Join** a team or private room you are invited to, and chat | ✅ | ✅ |
-| Basic picks from your skills and interests | ✅ | ✅ |
-| Resume upload and analysis | ❌ | ✅ |
-| Full **8-criterion** recommendation rubric with explanations | ❌ | ✅ |
-| RAG assistant with citations | ❌ | ✅ |
-| **Host** hackathon teams with a private room, invite people, tracker **Team up**, private rooms | ❌ | ✅ |
-| Teammate + open-team recommendations, plain-English people search, public teams, idea voting | ❌ | ✅ |
+HackElite is in **launch mode**: every signed-in user gets every feature (resume analysis, the full 8-criterion ranking, the AI assistant, hosting teams and private rooms, teammate recommendations, idea voting). There is nothing to buy.
 
-> Pro is activated with a key (`PRO_ACTIVATION_KEYS` in `.env`; the public demo key must be changed before deploying). Rules and rationale: [docs/SOCIAL.md](docs/SOCIAL.md).
+The Free/Pro code is kept, switched off, for later: set `PLANS_ENABLED=true` to bring the split back (the Plan page lives in `client/src/premium/`, server rules in `routes/plan.js` and `requirePro`). Rules and rationale for the split: [docs/SOCIAL.md](docs/SOCIAL.md).
 
 ## 🚀 Quick start
 
@@ -109,7 +100,7 @@ Hackathons, case competitions and coding contests are scattered across Devpost, 
 git clone https://github.com/MUKUL-PRASAD-SIGH/FSD.git && cd FSD
 npm install                 # root tooling
 npm run setup               # server + client dependencies
-cp .env.example .env        # set JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD (see below)
+cp .env.example .env        # set JWT_SECRET and your admin email(s) (see below)
 npm run dev                 # MongoDB + API :5050 + web :5173, all in one terminal
 ```
 
@@ -120,8 +111,8 @@ Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s)
 | First-run detail | |
 |---|---|
 | Generate `JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| Admin account | created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` on start (password needs 10+ chars, upper/lower, digit, symbol) |
-| Try Pro | sign in → **Upgrade** → paste a key from `PRO_ACTIVATION_KEYS` |
+| Admin account | put your email in `ADMIN_EMAILS`, sign up with it and verify it (or use Google sign-in): you become admin on that sign-in. Alternatively `ADMIN_EMAIL` / `ADMIN_PASSWORD` creates one on start (password needs 10+ chars, upper/lower, digit, symbol) |
+| Admin alerts | the same `ADMIN_EMAILS` receive new-college, listing-report and daily listing-quality emails (needs `SMTP_URL`) |
 | Own MongoDB / Atlas | set `MONGO_URI`, then `npm run dev:nodb` |
 | Everything offline | works without any external key; Google, Gemini and SMTP are optional upgrades ([docs/ENV_SETUP.md](docs/ENV_SETUP.md)) |
 
@@ -139,6 +130,7 @@ Open **http://localhost:5173**. The API pulls live listings on boot (after ~3 s)
 | `npm run e2e` | **live end-to-end**: boots the real server process and runs the 41-check product journey |
 | `npm run verify` | tests + client build + live e2e (the gate before merging) |
 | `npm run build` | production client build |
+| `npm run secrets` | scan tracked files for credentials (also runs in CI) |
 | `npm run ingest` · `sources:check` · `integrations:check` | refresh listings · probe all 16 sources · probe Gemini/SMTP/Google with your keys |
 | `npm run docker:up` / `docker:down` | run / stop the container stack |
 
@@ -179,7 +171,7 @@ The full tour with file paths and low-level mechanics is in **[docs/CODEBASE_GUI
 .
 ├── client/            React 19 + Vite app (pages, chat, calendar, resume studio, live realtime)
 ├── server/            Node + Express API
-│   ├── routes/        HTTP layer (14 files, 111 routes)
+│   ├── routes/        HTTP layer (15 files, 119 routes)
 │   ├── services/      business logic: recommender, rag, teams, chat, calendar, pageAgent, ingest/ …
 │   ├── models/        16 Mongoose schemas
 │   ├── middleware/    auth · security · ops
@@ -227,7 +219,8 @@ Node.js · Express 4 · MongoDB/Mongoose · React 19 · Vite · React Router · 
 | | |
 |---|---|
 | **[docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md)** | **start here**: every feature, file paths, low-level mechanics, demo script, likely questions |
-| [docs/API.md](docs/API.md) | all 111 routes with access rules + WebSocket protocol |
+| [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) | launch blockers, leak review, scaling limits, SMS, next features |
+| [docs/API.md](docs/API.md) | all 119 routes with access rules + WebSocket protocol |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | flows, recommender, ingestion, RAG, operations |
 | [docs/SECURITY.md](docs/SECURITY.md) | controls, tests, known gaps |
 | [docs/SOCIAL.md](docs/SOCIAL.md) | network, teams, chat, Free vs Pro |
@@ -240,7 +233,7 @@ Node.js · Express 4 · MongoDB/Mongoose · React 19 · Vite · React Router · 
 
 ## 🗺️ Known limits and roadmap
 - Some sources are unofficial endpoints (DoraHacks is bot-walled and skipped; Kaggle and clist need free keys). Pages rendered only by JavaScript give the per-event agent just the listing data.
-- Pro is key-based; **next:** payments, chat moderation (report/delete), headless-browser crawling, Redis for multi-instance scale-out.
+- Paid plans are switched off (launch mode); **next:** SMS/WhatsApp reminders, payments when needed, chat moderation (report/delete), headless-browser crawling, Redis for multi-instance scale-out.
 - One server instance today (jobs and sockets run in-process); the scale-out path is documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#7-scaling-honest-limits).
 - The previous version of the project is kept in [`old/`](old/) for reference.
 

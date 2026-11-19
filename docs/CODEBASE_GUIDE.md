@@ -130,7 +130,7 @@ On start (`start()` in `server/server.js`): validate env → connect MongoDB →
 │   ├── config/                  env.js (validated config) · db.js
 │   ├── middleware/              auth.js · security.js · ops.js
 │   ├── models/                  Mongoose schemas (16)
-│   ├── routes/                  HTTP layer (14 files, 111 routes)
+│   ├── routes/                  HTTP layer (15 files, 119 routes)
 │   ├── services/                business logic (+ ingest/ with 14 adapter files)
 │   ├── utils/                   safeFetch · pii · geo · password · breached · sanitize · serialize · http · listingInput · seed
 │   ├── scripts/                 dev-db.js · e2e-live.js · source-check.js · check-integrations.js

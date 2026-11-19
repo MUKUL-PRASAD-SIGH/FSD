@@ -33,8 +33,11 @@ Base URL: `http://localhost:5050` in development (the Vite dev server proxies `/
 | POST | `/api/auth/verify` | strict limit | `{ token }` single-use, 24 h |
 
 ## Listings (`/api/listings`)
+Every listing in a response carries `verify[]`: plain-language things to double-check on the organiser page (empty for clean listings; see `services/listingQuality.js`).
+
 | Method | Path | Access | What it does |
 |---|---|---|---|
+| POST | `/api/listings/:id/report` | signed in | `{ reason, note? }`, reason one of `wrong_dates`, `wrong_prize`, `wrong_location`, `broken_link`, `duplicate`, `spam_or_fake`, `closed`, `other`. One open report per person per listing (`{ already: true }` on repeats); admins are alerted |
 | GET | `/api/listings` | public | Browse open events. Query: `q`, `type`, `mode`, `platform`, `city`, `free=true`, `closing=week`, `minPrize`, `sort=deadline\|prize\|popular`, `limit` (≤200), `offset` → `{ total, count, listings[] }` |
 | GET | `/api/listings/stats` | public | `{ open, closingWeek, prizeInr, platforms[], types[], refreshedAt }` |
 | GET | `/api/listings/calendar.ics` | public | Generic deadlines calendar (RFC 5545). `?ids=a,b` limits to chosen events |
@@ -58,7 +61,8 @@ Base URL: `http://localhost:5050` in development (the Vite dev server proxies `/
 ## Me: profile, resume, recommendations, tracker, notifications (`/api/me`)
 | Method | Path | Access | What it does |
 |---|---|---|---|
-| PUT | `/api/me/profile` | signed in | Partial update: `name, college, bio, githubUrl, linkedinUrl, skills[], interests[], location{city,state,country}, education{level,gradYear}, preferences{…}, privacy{shareQuestions}, social{discoverable,lookingForTeam,headline}, notify{inApp,email,minMatch,emailReminders,emailSocial}`. `role`, `plan`, `tokenVersion` are never assignable |
+| PUT | `/api/me/profile` | signed in | Partial update: `name, college, bio, githubUrl, linkedinUrl, skills[], interests[], location{city,state,country}, education{level,gradYear}, preferences{…}, privacy{shareQuestions,shareUsage}, onboarding{goals[],complete,skip}, social{discoverable,lookingForTeam,headline}, notify{inApp,email,minMatch,emailReminders,emailSocial}`. `role`, `plan`, `tokenVersion` are never assignable. `college` is matched to the directory (aliases like RVCE → the official name); an unknown name is added (3 a day per person, junk refused with 400) and admins are alerted. Only the `preferences` keys you send change |
+| GET | `/api/me/onboarding` | signed in | What the recommender still needs: `{ missing[{field,why}], completeness (0-100), fromResume, done, skipped, goals, goalOptions }` |
 | POST | `/api/me/resume` | Pro, heavy | `multipart/form-data` field `resume` (PDF, DOCX, TXT; ≤5 MB; magic-byte checked; parsed in memory, never stored). → `{ user, parsed{ skillDetail, wordCount } }` |
 | DELETE | `/api/me/resume` | signed in | Delete all resume-derived data |
 | GET | `/api/me/recommendations` | signed in | `?limit` (≤50). Free: basic picks. Pro: 8-criterion rubric with `criteria[]`, `reasons[]`, `excluded{ineligible,duplicate,saved}` |
@@ -69,7 +73,14 @@ Base URL: `http://localhost:5050` in development (the Vite dev server proxies `/
 | GET | `/api/me/notifications` | signed in | `{ unread, notifications[] }` |
 | POST | `/api/me/notifications/read-all` · `/:id/read` | signed in | Mark read |
 
+## Colleges (`/api/colleges`)
+| Method | Path | Access | What it does |
+|---|---|---|---|
+| GET | `/api/colleges?q=&limit=` | public | Dropdown suggestions (seeded Bengaluru colleges + user additions, hidden ones excluded), most used first |
+
 ## Plans (`/api/plan`)
+With `PLANS_ENABLED=false` (default) every user is unlocked, `GET` reports `{ plansEnabled: false, unlocked: true }`, and activate/downgrade answer `409 PLANS_DISABLED`.
+
 | Method | Path | Access | What it does |
 |---|---|---|---|
 | GET | `/api/plan` | signed in | Your tier and the Free/Pro feature lists |
@@ -160,6 +171,11 @@ Base URL: `http://localhost:5050` in development (the Vite dev server proxies `/
 | POST | `/api/admin/ingest/run` | Run a full sync now (one at a time) |
 | GET | `/api/admin/integrations` | Real request to every configured integration (Gemini, SMTP, Google, Kaggle, clist, MongoDB); secrets never included |
 | POST | `/api/admin/notifier/run` | Run the notification generator now |
+| GET | `/api/admin/review` | Review queue: open listings with `quality.score ≥ 2`, open user reports, colleges users added → `{ listings, reports, colleges, counts }` |
+| POST | `/api/admin/review/listings/:id/ok` | “Looks fine”: removes a flagged listing from the queue until it changes |
+| POST | `/api/admin/review/reports/:id` | `{ action }`: `resolve` or `dismiss`; recomputes the listing's flags |
+| PATCH | `/api/admin/colleges/:id` | `{ action }`: `approve`, `hide`, `rename` (+ `name`) or `merge` (+ `into`); rename and merge update every profile using it; merged spellings keep resolving to the target |
+| GET | `/api/admin/colleges?q=` | Search the directory (for merging) |
 | GET | `/api/admin/analytics?days=7\|30\|90` | Dashboard bundle: overview KPIs, per-day series (active users, minutes, signups, page/listing views, Register clicks), most viewed / clicked / saved listings, top searches, top pages, time spent per user, funnel |
 | GET | `/api/admin/analytics/breakdowns?days=` | Users by role, plan, status, education, college, city, skill; listings and listing views by type, source, mode; chat counts (never message text) |
 | GET | `/api/admin/analytics/users/:q` | Look up people by name or email: profile basics plus their time, views, clicks, tracker and chat counts |

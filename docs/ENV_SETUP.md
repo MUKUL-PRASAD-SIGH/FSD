@@ -31,8 +31,13 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"   # pas
 - Rotating `JWT_SECRET` signs everyone out (by design).
 - Check: `npm run integrations:check jwt admin_bootstrap`.
 
-### Pro activation: `PRO_ACTIVATION_KEYS`
-Comma-separated keys, e.g. `PRO_ACTIVATION_KEYS=HE-PRO-7f3a9c2e,HE-PRO-1b8d44aa`. Generate with `node -e "console.log('HE-PRO-'+require('crypto').randomBytes(6).toString('hex'))"`. The server refuses to start in production without keys, and the self-check fails if the public demo key is enabled in production.
+### More admins: `ADMIN_EMAILS`
+Comma-separated, e.g. `ADMIN_EMAILS=you@gmail.com,cofounder@gmail.com`. An account with one of these emails becomes an admin **the first time it signs in with a verified email**: either it clicked the verification link, or it used Google sign-in. Registering someone else's address does nothing, because unverified accounts are never promoted. No password goes in `.env`. These addresses (plus every admin account) also receive admin alert emails: a user added a new college, someone reported a listing, and a once-a-day digest of confusing listings. Alerts need `SMTP_URL`.
+
+### Plans: `PLANS_ENABLED`, `PRO_ACTIVATION_KEYS`
+`PLANS_ENABLED=false` (the default) makes every feature free for every signed-in user and hides the Plan page and every Pro label. Set it to `true` to bring back the Free/Pro split; only then do the keys below matter.
+
+Comma-separated keys, e.g. `PRO_ACTIVATION_KEYS=HE-PRO-7f3a9c2e,HE-PRO-1b8d44aa`. Generate with `node -e "console.log('HE-PRO-'+require('crypto').randomBytes(6).toString('hex'))"`. With plans on, the server refuses to start in production without keys or with the public demo key.
 
 ---
 
