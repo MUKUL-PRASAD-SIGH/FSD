@@ -155,6 +155,9 @@ export const api = {
 
   colleges: (q = '') => request(`/colleges?q=${encodeURIComponent(q)}&limit=10`, { auth: false }),
   onboarding: () => request('/me/onboarding'),
+  phoneStart: (phone, channel) => j('POST', '/me/phone/start', { phone, channel }),
+  phoneVerify: (code) => j('POST', '/me/phone/verify', { code }),
+  phoneRemove: () => request('/me/phone', { method: 'DELETE' }),
   reportListing: (id, reason, note = '') => j('POST', `/listings/${id}/report`, { reason, note }),
 
   // analytics intake (write-only)

@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { useToast } from '../toast.jsx';
 import CollegePicker from '../CollegePicker.jsx';
+import PhoneReminders from '../PhoneReminders.jsx';
 import ResumeStudio from '../ResumeStudio.jsx';
 import SocialSettings from '../SocialSettings.jsx';
 import { PasswordMeter, passwordOk } from '../forms.jsx';
@@ -96,7 +97,7 @@ export default function Profile() {
   async function save(e) {
     e.preventDefault(); setBusy(true); setErr(''); setMsg('');
     try {
-      const r = await api.updateProfile({ skills: toList(skills), interests, college, bio, preferences: prefs, location: loc, education: { level: edu.level || '', gradYear: edu.gradYear }, notify });
+      const r = await api.updateProfile({ skills: toList(skills), interests, college, bio, preferences: prefs, location: loc, education: { level: edu.level || '', gradYear: edu.gradYear }, notify: { ...notify, smsReminders: undefined } });
       sync(r.user); setMsg('Saved. Your picks and notifications update immediately.');
     } catch (x) { setErr(x.message); } finally { setBusy(false); }
   }
@@ -142,6 +143,7 @@ export default function Profile() {
             <label>Only if match ≥ {notify.minMatch}%<input type="range" min="30" max="95" step="5" value={notify.minMatch} onChange={(e) => setNotify({ ...notify, minMatch: Number(e.target.value) })} /></label>
           </div>
         </fieldset>
+        <PhoneReminders />
         <fieldset><legend>Privacy</legend>
           <label className="chk">
             <input type="checkbox" checked={user.privacy?.shareUsage !== false}

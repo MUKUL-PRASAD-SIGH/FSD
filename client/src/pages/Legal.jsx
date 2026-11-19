@@ -15,6 +15,7 @@ export function Privacy() {
         <li><strong>Profile you choose to add:</strong> city, college, education, graduation year, skills, interests and preferences. These power your recommendations.</li>
         <li><strong>Resume (optional):</strong> we extract text to read your skills. The file itself is never stored. You can delete the extracted data at any time from your profile.</li>
         <li><strong>Activity on the site:</strong> pages and listings you open, Register clicks, searches, and time spent while the tab is visible. You can turn off personal tracking in <Link to="/profile">Profile → Privacy</Link>; your visits then count only in anonymous totals and no time is recorded.</li>
+        <li><strong>Phone number (optional):</strong> only if you turn on text reminders, after you confirm it with a one-time code. It is used only for deadline reminders, never shown to anyone, and you can remove it any time. Reply STOP to any text to stop them.</li>
         <li><strong>Social features:</strong> connections, teams and chat messages you send. Messages are visible only to the people in that conversation.</li>
       </ul>
       <h2>What we do not do</h2>
@@ -27,6 +28,7 @@ export function Privacy() {
       <ul>
         <li>Hosting and database: [hosting provider] and MongoDB Atlas ([region]).</li>
         <li>Email delivery: [email provider].</li>
+        <li>Text messages: Twilio (your number and the reminder text), only if you turn text reminders on.</li>
         <li>Google, if you use Google sign-in, and Google Gemini if AI answers are switched on (the question and the relevant listing text are sent to generate an answer).</li>
       </ul>
       <h2>Keeping and deleting</h2>
