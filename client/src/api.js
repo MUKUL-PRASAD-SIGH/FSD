@@ -143,4 +143,11 @@ export const api = {
   adminSourceHistory: (s) => request(`/admin/sources/${encodeURIComponent(s)}/history`),
   runIngest: (sources) => j('POST', '/admin/ingest/run', { sources }),
   adminIntegrations: () => request('/admin/integrations'),
+  adminAnalytics: (days = 30) => request(`/admin/analytics?days=${days}`),
+  adminBreakdowns: (days = 30) => request(`/admin/analytics/breakdowns?days=${days}`),
+  adminAssistant: (question, history = []) => j('POST', '/admin/assistant', { question, history }),
+
+  // analytics intake (write-only)
+  track: (event) => request('/track', { method: 'POST', body: event }),
+  heartbeat: (seconds) => request('/track/heartbeat', { method: 'POST', body: { seconds } }),
 };

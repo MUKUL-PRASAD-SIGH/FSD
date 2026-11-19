@@ -6,6 +6,7 @@ import { closes, inr, prizeText } from '../components.jsx';
 import HackathonAgent from '../HackathonAgent.jsx';
 import AddToCalendar from '../AddToCalendar.jsx';
 import { useToast } from '../toast.jsx';
+import { track } from '../analytics.js';
 
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const KIND = { registration: 'Registration closes', submission: 'Submissions close', event_start: 'Starts (register before)', event_end: 'Ends' };
@@ -17,7 +18,7 @@ export default function ListingDetail() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(null);
   const toast = useToast();
-  useEffect(() => { api.listing(id).then((r) => { setD(r.listing); setSaved(r.saved); }).catch((e) => setError(e.message)); }, [id]);
+  useEffect(() => { api.listing(id).then((r) => { setD(r.listing); setSaved(r.saved); track('listing_view', { listingId: r.listing.id }); }).catch((e) => setError(e.message)); }, [id]);
 
   if (error) return <div className="empty"><h2>Listing not available</h2><p>{error}. It may have closed.</p><Link to="/">Back to browse</Link></div>;
   if (!d) return <p className="muted">Loading…</p>;
@@ -32,7 +33,7 @@ export default function ListingDetail() {
       <h1>{d.title}</h1>
       <p className="muted">{d.organiser || 'Organiser'} · listed on {d.platform}{d.alsoOn?.length ? <> · also on {d.alsoOn.map((a, i) => <span key={a.url}>{i ? ', ' : ''}<a href={a.url} target="_blank" rel="noreferrer noopener">{a.platform}</a></span>)}</> : null}</p>
       <div className="detail-actions">
-        <a className="btn primary" href={d.url} target="_blank" rel="noreferrer noopener" onClick={() => { if (user) api.registered(d.id).then((r) => { setSaved({ status: r.saved.status }); toast(`Added to your tracker as ${r.saved.status}`, 'good'); }).catch(() => {}); }}>Register on {d.platform} ↗</a>
+        <a className="btn primary" href={d.url} target="_blank" rel="noreferrer noopener" onClick={() => { track('register_click', { listingId: d.id }); if (user) api.registered(d.id).then((r) => { setSaved({ status: r.saved.status }); toast(`Added to your tracker as ${r.saved.status}`, 'good'); }).catch(() => {}); }}>Register on {d.platform} ↗</a>
         {user && <button className="btn ghost" onClick={toggle} aria-pressed={!!saved}>{saved ? `★ In tracker (${saved.status})` : '☆ Save to tracker'}</button>}
         <AddToCalendar listing={d} />
       </div>

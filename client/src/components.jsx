@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { useAuth } from './auth.jsx';
 import AddToCalendar from './AddToCalendar.jsx';
 import { useToast } from './toast.jsx';
+import { track } from './analytics.js';
 
 export const inr = (n) => {
   if (n == null) return null;
@@ -103,12 +104,14 @@ export function ListingCard({ item, rec, saved, onSaveChange }) {
   const toast = useToast();
   // Clicking Register opens the organiser's page AND tracks it as "applied" for signed-in users (never downgrades a later stage)
   async function registered() {
+    track('register_click', { listingId: item.id });
     if (!user) return;
     try { const r = await api.registered(item.id); setIsSaved(true); onSaveChange?.(item.id, true); toast(`Added to your tracker as ${r.saved.status}`, 'good'); } catch { /* the registration link still opens */ }
   }
   const toggleCard = (e) => {
     if (e.target.closest(INTERACTIVE) || e.target.closest('.more')) return; // links, buttons and the open details are not toggles
     if (window.getSelection()?.toString()) return; // user is selecting text
+    if (!expanded) track('listing_view', { listingId: item.id }); // opening the details counts as viewing the listing
     setExpanded((v) => !v);
   };
   const onKey = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); setExpanded((v) => !v); } };

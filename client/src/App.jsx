@@ -18,6 +18,7 @@ import Teams from './pages/Teams.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import Chat from './pages/Chat.jsx';
 import { useRealtime } from './realtime.jsx';
+import { useAnalytics } from './analytics.js';
 import { API_ORIGIN, api } from './api.js';
 import { useToast } from './toast.jsx';
 
@@ -64,6 +65,7 @@ function VerifyBanner() {
 export default function App() {
   const { user, ready, logout, isPro } = useAuth();
   const { counts } = useRealtime();
+  useAnalytics(user);
   const [notes, reloadNotes] = useNotifications(!!user);
   const link = ({ isActive }) => (isActive ? 'active' : '');
   const g = (roles, el) => <Guard roles={roles}>{el}</Guard>;

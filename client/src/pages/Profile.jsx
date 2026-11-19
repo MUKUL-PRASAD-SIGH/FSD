@@ -140,6 +140,14 @@ export default function Profile() {
             <label>Only if match ≥ {notify.minMatch}%<input type="range" min="30" max="95" step="5" value={notify.minMatch} onChange={(e) => setNotify({ ...notify, minMatch: Number(e.target.value) })} /></label>
           </div>
         </fieldset>
+        <fieldset><legend>Privacy</legend>
+          <label className="chk">
+            <input type="checkbox" checked={user.privacy?.shareUsage !== false}
+              onChange={(e) => api.updateProfile({ privacy: { shareUsage: e.target.checked } }).then((r) => { setUser(r.user); toast(r.user.privacy.shareUsage ? 'Usage analytics on' : 'Usage analytics off: your activity is now counted anonymously', 'good'); }).catch((er) => toast(er.message, 'err'))} />
+            {' '}let HackElite admins see my activity (pages viewed and time on the site) to improve the platform
+          </label>
+          <p className="small muted">Off: your visits still count in anonymous totals, but nothing is tied to your account and time on the site is not recorded. Saved immediately.</p>
+        </fieldset>
         <label>College / institute<input value={college} onChange={(e) => setCollege(e.target.value)} /></label>
         <label>About you<textarea rows={2} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Anything else that should shape your picks" /></label>
         {msg && <p className="ok" role="status">{msg}</p>}{err && <p className="error" role="alert">{err}</p>}
