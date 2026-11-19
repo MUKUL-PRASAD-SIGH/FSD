@@ -11,6 +11,8 @@ const config = {
   port: Number(process.env.PORT) || Number(process.env.API_PORT) || 5050,
   mongoUri: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hackelite_db',
   mongoUriConfigured: !!process.env.MONGO_URI,
+  // True when the database lives on this machine (the dev default or a localhost URI), so only this computer's users share it.
+  dbIsLocal: /^mongodb:\/\/([^@/]*@)?(127\.0\.0\.1|localhost|\[::1\])([:/]|$)/i.test(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hackelite_db'),
   mongoDbName: process.env.MONGO_DB_NAME || undefined, // lets tests use an isolated database
   jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',

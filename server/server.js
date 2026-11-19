@@ -20,7 +20,7 @@ function buildApp() {
   app.use(sanitize);
 
   // Liveness: the process is up. Readiness: it can actually serve (MongoDB connected). Orchestrators route on the latter.
-  app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+  app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString(), localDb: config.dbIsLocal }));
   app.get('/api/health/ready', (_req, res) => {
     const db = mongoose.connection.readyState === 1;
     res.status(db ? 200 : 503).json({ ok: db, db: db ? 'up' : 'down', uptimeSec: Math.round(process.uptime()) });
