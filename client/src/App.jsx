@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Home from './pages/Home.jsx';
@@ -28,6 +28,18 @@ function Guard({ roles, children }) {
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
+}
+
+// Dev-only notice, shown only when the API reports its database is on this machine (not when it uses a shared one such as Atlas).
+function LocalDataBanner() {
+  const [local, setLocal] = useState(false);
+  useEffect(() => {
+    let live = true;
+    api.health().then((h) => { if (live) setLocal(h.localDb === true); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  if (!local) return null;
+  return <div className="banner">Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</div>;
 }
 
 function Theme() {
@@ -90,7 +102,7 @@ export default function App() {
           )}
         </div>
       </header>
-      {import.meta.env.DEV && !API_ORIGIN && <div className="banner">Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</div>}
+      {import.meta.env.DEV && !API_ORIGIN && <LocalDataBanner />}
       <VerifyBanner />
       <main id="main">
         {ready && (

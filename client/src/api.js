@@ -29,6 +29,7 @@ async function request(path, { method = 'GET', body, form, auth = true } = {}) {
 const j = (method, path, body) => request(path, { method, body });
 
 export const api = {
+  health: () => request('/health', { auth: false }),
   config: () => request('/auth/config', { auth: false }),
   register: (b) => j('POST', '/auth/register', b),
   login: (b) => j('POST', '/auth/login', b),
