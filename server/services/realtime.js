@@ -42,7 +42,7 @@ function init(httpServer) {
   io = new Server(httpServer, {
     cors: { origin: (origin, cb) => cb(null, !origin || config.clientOrigins.includes(origin)), credentials: false },
     maxHttpBufferSize: 16 * 1024,
-    pingInterval: 25000, pingTimeout: 20000,
+    pingInterval: 10000, pingTimeout: 10000, // notice a dead connection (sleeping phone, dropped Wi-Fi) within ~20 s
     serveClient: false,
   });
   io.use(authenticate);
