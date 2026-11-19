@@ -2,6 +2,13 @@
 .env
 .env.*
 !.env.example
+# env files without the dot, and key material
+env
+*.env
+*.pem
+*.key
+*.p12
+serviceAccount*.json
 
 # ---- dependencies and build output -------------------------------------------
 node_modules/
