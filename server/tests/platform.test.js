@@ -129,7 +129,9 @@ test('admin college review: rename, merge into the official name (profiles follo
   assert.match(again.body.user.college, /R V College of Engineering/);
   const v2 = await College.findOne({ name: 'New Valley College 2' });
   await call('PATCH', `/api/admin/colleges/${v2._id}`, { token: admin.token, body: { action: 'hide' } });
-  assert.equal((await call('GET', '/api/colleges?q=new valley')).body.colleges.length, 0, 'hidden colleges leave the dropdown');
+  const left = (await call('GET', '/api/colleges?q=new valley')).body.colleges.map((x) => x.name);
+  assert.ok(!left.includes('New Valley College 2'), 'hidden colleges leave the dropdown');
+  assert.ok(left.some((x) => /R V College of Engineering/.test(x)), 'the merged spelling is now an alias of the official college');
   assert.equal((await call('PATCH', `/api/admin/colleges/${v2._id}`, { token: alice.token, body: { action: 'approve' } })).status, 403);
 });
 
