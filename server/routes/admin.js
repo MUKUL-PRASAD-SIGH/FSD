@@ -163,4 +163,26 @@ router.get('/integrations', asyncRoute(async (_req, res) => {
 
 router.post('/notifier/run', asyncRoute(async (_req, res) => res.json({ created: await runNotifier() })));
 
+// ---- Analytics + admin AI (admin only, like everything in this router) ------------------------------------------------
+const analytics = require('../services/analytics');
+const adminAssistant = require('../services/adminAssistant');
+const { heavyLimiter } = require('../middleware/security');
+
+router.get('/analytics', asyncRoute(async (req, res) => res.json(await analytics.dashboard({ days: req.query.days }))));
+router.get('/analytics/breakdowns', asyncRoute(async (req, res) => {
+  const [users, listings, chat] = await Promise.all([analytics.userBreakdown(), analytics.listingBreakdown({ days: req.query.days }), analytics.chatActivity({ days: req.query.days })]);
+  res.json({ users, listings, chat });
+}));
+router.get('/analytics/users/:q', asyncRoute(async (req, res) => res.json(await analytics.userLookup({ q: req.params.q, days: req.query.days }))));
+
+router.post('/assistant', heavyLimiter, asyncRoute(async (req, res) => {
+  const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
+  if (question.length < 3 || question.length > 500) return res.status(400).json({ error: 'Ask a question between 3 and 500 characters' });
+  const history = (Array.isArray(req.body?.history) ? req.body.history : [])
+    .slice(-6).filter((h) => h && ['user', 'assistant'].includes(h.role) && typeof h.text === 'string').map((h) => ({ role: h.role, text: h.text.slice(0, 500) }));
+  const out = await adminAssistant.answer(question, history);
+  audit(req, 'admin.assistant', { meta: { question: question.slice(0, 200), tools: out.tools.map((t) => t.tool) } });
+  res.json(out);
+}));
+
 module.exports = router;
