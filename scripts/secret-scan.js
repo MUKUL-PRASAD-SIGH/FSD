@@ -11,7 +11,7 @@ const RULES = [
   ['SMTP URL with password', /smtps?:\/\/[^\s:@"'`<>]+:([^\s@"'`<>]{6,})@/g, (m) => !/^(<|pass|password|app-password|xxxx|your)/i.test(m[1]) && !/you(%40|@)|user:|example/.test(m[0])],
   ['Google API key', /AIza[0-9A-Za-z_-]{35}/g],
   ['Google OAuth client secret', /GOCSPX-[0-9A-Za-z_-]{20,}/g],
-  ['Twilio account SID / API key', /\b(AC|SK)[0-9a-f]{32}\b/g],
+  ['Twilio account SID / API key', /\b(AC|SK)[0-9a-f]{32}\b/g, (m) => !/^(AC|SK)(0+|1+|f+)$/i.test(m[0])], // all-zero fakes in tests are fine
   ['Slack token', /xox[abprs]-[0-9A-Za-z-]{10,}/g],
   ['Stripe live key', /sk_live_[0-9A-Za-z]{20,}/g],
   ['OpenAI / Anthropic key', /\b(sk-(proj-|ant-)?[A-Za-z0-9_-]{32,})\b/g],
