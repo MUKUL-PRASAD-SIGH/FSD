@@ -41,10 +41,12 @@ export function RealtimeProvider({ children }) {
     s.on('room:removed', () => { window.dispatchEvent(new CustomEvent('hackelite:rooms')); refresh(); });
     refresh();
     const poll = setInterval(refresh, 15000);
-    const onFocus = () => { if (document.visibilityState === 'visible') refresh(); };
+    // Coming back to the tab (or back online): reconnect right away instead of waiting out the backoff, then refresh badges
+    const onFocus = () => { if (document.visibilityState === 'visible') { if (!s.connected) s.connect(); refresh(); } };
+    window.addEventListener('online', onFocus);
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
-    return () => { s.removeAllListeners(); s.close(); clearInterval(poll); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); clearTimeout(timer.current); };
+    return () => { s.removeAllListeners(); s.close(); clearInterval(poll); window.removeEventListener('focus', onFocus); window.removeEventListener('online', onFocus); document.removeEventListener('visibilitychange', onFocus); clearTimeout(timer.current); };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setActiveRoom = useCallback((id) => { active.current = id; }, []);
