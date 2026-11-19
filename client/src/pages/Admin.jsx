@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { Analytics, AdminAI } from './AdminAnalytics.jsx';
 
 function Stats({ tick }) {
   const [s, setS] = useState(null);
@@ -174,10 +175,10 @@ function Audit() {
 }
 
 export default function Admin() {
-  const [tab, setTab] = useState('sources');
+  const [tab, setTab] = useState('analytics');
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
-  const tabs = { sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
+  const tabs = { analytics: Analytics, 'ask AI': AdminAI, sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
   const Tab = tabs[tab];
   return (
     <>
