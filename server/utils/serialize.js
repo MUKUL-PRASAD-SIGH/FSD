@@ -8,7 +8,9 @@ const publicUser = (u) => ({
   emailVerified: u.emailVerified,
   hasPassword: !!u.hasPassword,
   googleLinked: !!u.googleId,
-  plan: { tier: u.plan?.tier || 'free', since: u.plan?.since },
+  onboarding: { done: !!u.onboarding?.completedAt, skipped: !!u.onboarding?.skippedAt, goals: u.onboarding?.goals || [] },
+  // unlocked = has every feature (always true while paid plans are switched off)
+  plan: { tier: u.plan?.tier || 'free', since: u.plan?.since, unlocked: typeof u.isPro === 'function' ? u.isPro() : u.plan?.tier === 'pro' },
   lister: u.role === 'lister' || u.lister?.approvalStatus
     ? {
         organisation: u.lister?.organisation,

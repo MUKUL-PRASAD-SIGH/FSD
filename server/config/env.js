@@ -21,7 +21,13 @@ const config = {
   geminiKey: process.env.GEMINI_API_KEY || '',
   embeddingsProvider: process.env.EMBEDDINGS_PROVIDER || 'local', // local | gemini
   proKeys: list(process.env.PRO_ACTIVATION_KEYS),
+  // Paid plans are switched off by default: every signed-in user gets every feature. Set PLANS_ENABLED=true to bring the
+  // Free/Pro split back (the plan code lives on unchanged in routes/plan.js and client/src/premium/).
+  plansEnabled: process.env.PLANS_ENABLED === 'true',
   adminEmail: (process.env.ADMIN_EMAIL || '').toLowerCase(),
+  // Extra admins (and recipients of admin alert emails). Accounts with these emails become admins only once the email is
+  // verified (email link or Google sign-in), so nobody can claim admin by registering someone else's address.
+  adminEmails: [...new Set([...list(process.env.ADMIN_EMAILS).map((e) => e.toLowerCase()), (process.env.ADMIN_EMAIL || '').toLowerCase()].filter(Boolean))],
   adminPassword: process.env.ADMIN_PASSWORD || '',
   smtpUrl: process.env.SMTP_URL || '',
   mailFrom: process.env.MAIL_FROM || 'HackElite <no-reply@hackelite.local>',
@@ -35,8 +41,13 @@ function validate() {
   if (config.jwtSecret.length < 32) problems.push('JWT_SECRET must be at least 32 characters');
   if (config.jwtSecret === 'hackelite_super_secret_jwt_key_2026') problems.push('JWT_SECRET is the public default from the old project');
   if (isProd && !config.mongoUriConfigured) problems.push('MONGO_URI must point to the persistent shared MongoDB used by this deployment');
-  if (isProd && !config.proKeys.length) problems.push('PRO_ACTIVATION_KEYS must be set in production');
+  if (isProd && config.plansEnabled && !config.proKeys.length) problems.push('PRO_ACTIVATION_KEYS must be set in production when PLANS_ENABLED=true');
+  if (isProd && config.plansEnabled && config.proKeys.includes('HACKELITE-PRO-DEMO-2026')) problems.push('PRO_ACTIVATION_KEYS contains the public demo key');
   if (isProd && config.clientOrigins.includes('*')) problems.push('CLIENT_ORIGIN must not be *');
+  // Real users need password resets and verification links, which need email
+  if (isProd && !config.smtpUrl) problems.push('SMTP_URL must be set in production (password reset, email verification, admin alerts)');
+  if (isProd && !/^https:\/\//.test(config.appUrl)) problems.push('APP_URL must be the public https:// address in production (it is used in emailed links)');
+  if (isProd && !config.adminEmails.length) console.warn('WARNING: no ADMIN_EMAILS/ADMIN_EMAIL set: nobody receives admin alerts');
   if (problems.length) {
     const msg = `Invalid configuration:\n - ${problems.join('\n - ')}`;
     if (isProd || config.isTest) throw new Error(msg);

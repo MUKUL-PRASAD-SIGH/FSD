@@ -61,6 +61,12 @@ const userSchema = new mongoose.Schema(
       maxTravelKm: { type: Number, default: 0 }, // 0 = online/local only, otherwise "willing to travel anywhere in country" flag below
       willingToTravel: { type: Boolean, default: false },
     },
+    // First-run setup (client /welcome): when it was finished or skipped, and what the person is here for
+    onboarding: {
+      completedAt: Date,
+      skippedAt: Date,
+      goals: { type: [String], default: [] }, // see services/profileGaps.js GOALS
+    },
     // shareUsage: whether page views and time on platform are tied to this account in admin analytics (off = counted anonymously)
     privacy: { shareQuestions: { type: Boolean, default: true }, shareUsage: { type: Boolean, default: true } },
     // Social profile. Off by default: nobody appears in people search or recommendations until they opt in.
@@ -116,7 +122,8 @@ userSchema.methods.comparePassword = function (plain) {
   return this.password ? bcrypt.compare(plain, this.password) : Promise.resolve(false);
 };
 userSchema.methods.isLocked = function () { return !!(this.lockUntil && this.lockUntil > new Date()); };
-userSchema.methods.isPro = function () { return this.plan?.tier === 'pro' || this.role === 'admin'; };
+// "Has every feature". With paid plans switched off (the default, see config.plansEnabled) that is everyone.
+userSchema.methods.isPro = function () { return !require('../config/env').config.plansEnabled || this.plan?.tier === 'pro' || this.role === 'admin'; };
 
 // The calendar feed finds a user by token on every poll: unique (a token identifies exactly one user) and sparse (most users have none)
 userSchema.index({ 'calendar.token': 1 }, { unique: true, sparse: true });
