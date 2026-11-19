@@ -26,7 +26,7 @@ const publicUser = (u) => ({
   skills: u.skills,
   interests: u.interests,
   preferences: u.preferences,
-  privacy: { shareQuestions: u.privacy?.shareQuestions !== false },
+  privacy: { shareQuestions: u.privacy?.shareQuestions !== false, shareUsage: u.privacy?.shareUsage !== false },
   social: { discoverable: !!u.social?.discoverable, headline: u.social?.headline || '', lookingForTeam: !!u.social?.lookingForTeam },
   notify: { inApp: u.notify?.inApp, email: u.notify?.email, minMatch: u.notify?.minMatch, emailReminders: !!u.notify?.emailReminders, emailSocial: u.notify?.emailSocial !== false },
   resume: u.resume?.parsedAt

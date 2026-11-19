@@ -168,6 +168,8 @@ router.delete('/me', protect, authLimiter, asyncRoute(async (req, res) => {
     Saved.deleteMany({ user: user._id }),
     Notification.deleteMany({ user: user._id }),
     require('../models/UserQuery').deleteMany({ user: user._id }),
+    require('../models/Activity').deleteMany({ user: user._id }),
+    require('../models/UsageDay').deleteMany({ user: user._id }),
     require('../services/erase').eraseUser(user._id),
     Listing.updateMany({ createdBy: user._id }, { $set: { status: 'unpublished' } }), // keep records, take them offline
   ]);

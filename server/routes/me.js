@@ -61,7 +61,10 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof b.social.lookingForTeam === 'boolean') u.social.lookingForTeam = b.social.lookingForTeam;
     if (typeof b.social.headline === 'string') u.social.headline = str(b.social.headline, 120);
   }
-  if (b.privacy && typeof b.privacy === 'object' && typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
+  if (b.privacy && typeof b.privacy === 'object') {
+    if (typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
+    if (typeof b.privacy.shareUsage === 'boolean') u.privacy.shareUsage = b.privacy.shareUsage;
+  }
   if (b.notify && typeof b.notify === 'object') {
     if (typeof b.notify.inApp === 'boolean') u.notify.inApp = b.notify.inApp;
     if (typeof b.notify.email === 'boolean') u.notify.email = b.notify.email;

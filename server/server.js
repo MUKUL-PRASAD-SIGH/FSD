@@ -38,6 +38,7 @@ function buildApp() {
   app.use('/api/assistant', require('./routes/assistant'));
   app.use('/api/lister', require('./routes/lister'));
   app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/track', require('./routes/track'));
   if (process.env.SERVE_CLIENT === 'true') serveClient(app);
   app.use(notFound);
   app.use(errorHandler);

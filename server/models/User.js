@@ -61,7 +61,8 @@ const userSchema = new mongoose.Schema(
       maxTravelKm: { type: Number, default: 0 }, // 0 = online/local only, otherwise "willing to travel anywhere in country" flag below
       willingToTravel: { type: Boolean, default: false },
     },
-    privacy: { shareQuestions: { type: Boolean, default: true } },
+    // shareUsage: whether page views and time on platform are tied to this account in admin analytics (off = counted anonymously)
+    privacy: { shareQuestions: { type: Boolean, default: true }, shareUsage: { type: Boolean, default: true } },
     // Social profile. Off by default: nobody appears in people search or recommendations until they opt in.
     social: {
       discoverable: { type: Boolean, default: false },
