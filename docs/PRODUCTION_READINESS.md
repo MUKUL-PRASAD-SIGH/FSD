@@ -78,7 +78,7 @@
 
 ## Twilio and SMS
 
-**Twilio is not integrated.** There is no SMS or WhatsApp code; reminders and alerts are email and in-app only.
+**Twilio is now integrated** (switched off until you add keys): phone verification with Twilio Verify, SMS or WhatsApp reminders 1 day and 3 hours before tracked deadlines, a per-user daily cap, and a signed STOP/START webhook. Setup: [ENV_SETUP.md, section 4b](ENV_SETUP.md#4b-sms-and-whatsapp-reminders-twilio_-optional). The notes below still apply before you switch it on.
 
 It can be connected to hackathons, and the natural uses are:
 - deadline reminders by SMS or WhatsApp for events in a user's tracker (the reminder scheduler already exists, so this is a new delivery channel, not a new system),
@@ -89,7 +89,7 @@ Before building it, two decisions are yours:
 1. **India's DLT rules.** Promotional or transactional SMS to Indian numbers requires DLT registration of your business, sender ID and message templates with an Indian telecom operator. Twilio supports India but you still register. WhatsApp (via Twilio or an Indian provider like MSG91 or Gupshup) needs template approval instead and is often the easier first channel.
 2. **Cost and consent.** Every message costs money, so SMS should be opt-in per user with a clear stop option and quiet hours.
 
-What it would take: a verified phone field, a `notify.sms` opt-in, `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` (or a Messaging Service), an SMS channel in `services/reminders.js`, delivery-status webhooks, and STOP handling.
+Still open: delivery-status callbacks (to spot failed texts) and quiet hours.
 
 ## Feature ideas worth rolling out next
 

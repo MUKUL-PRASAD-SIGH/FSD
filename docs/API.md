@@ -62,6 +62,9 @@ Every listing in a response carries `verify[]`: plain-language things to double-
 | Method | Path | Access | What it does |
 |---|---|---|---|
 | PUT | `/api/me/profile` | signed in | Partial update: `name, college, bio, githubUrl, linkedinUrl, skills[], interests[], location{city,state,country}, education{level,gradYear}, preferences{…}, privacy{shareQuestions,shareUsage}, onboarding{goals[],complete,skip}, social{discoverable,lookingForTeam,headline}, notify{inApp,email,minMatch,emailReminders,emailSocial}`. `role`, `plan`, `tokenVersion` are never assignable. `college` is matched to the directory (aliases like RVCE → the official name); an unknown name is added (3 a day per person, junk refused with 400) and admins are alerted. Only the `preferences` keys you send change |
+| POST | `/api/me/phone/start` | signed in | `{ phone, channel: sms\|whatsapp }` sends a one-time code via Twilio Verify; 10-digit numbers get `SMS_DEFAULT_COUNTRY_CODE`; 3 code requests per hour; `409` if the number is verified on another account; `503 SMS_NOT_CONFIGURED` without Twilio |
+| POST | `/api/me/phone/verify` | signed in | `{ code, enableReminders? }` confirms the number and (by default) turns on `notify.smsReminders` |
+| DELETE | `/api/me/phone` | signed in | Removes the number and turns text reminders off |
 | GET | `/api/me/onboarding` | signed in | What the recommender still needs: `{ missing[{field,why}], completeness (0-100), fromResume, done, skipped, goals, goalOptions }` |
 | POST | `/api/me/resume` | Pro, heavy | `multipart/form-data` field `resume` (PDF, DOCX, TXT; ≤5 MB; magic-byte checked; parsed in memory, never stored). → `{ user, parsed{ skillDetail, wordCount } }` |
 | DELETE | `/api/me/resume` | signed in | Delete all resume-derived data |
@@ -72,6 +75,11 @@ Every listing in a response carries `verify[]`: plain-language things to double-
 | DELETE | `/api/me/saved/:listingId` | signed in | Remove from the tracker |
 | GET | `/api/me/notifications` | signed in | `{ unread, notifications[] }` |
 | POST | `/api/me/notifications/read-all` · `/:id/read` | signed in | Mark read |
+
+## SMS webhook (`/api/sms`)
+| Method | Path | Access | What it does |
+|---|---|---|---|
+| POST | `/api/sms/inbound` | Twilio (signed) | Incoming replies. Rejected with `403` unless `X-Twilio-Signature` matches. `STOP`/`UNSUBSCRIBE`/`CANCEL`/`END`/`QUIT` turn text reminders off, `START`/`UNSTOP` back on; answers with TwiML |
 
 ## Colleges (`/api/colleges`)
 | Method | Path | Access | What it does |

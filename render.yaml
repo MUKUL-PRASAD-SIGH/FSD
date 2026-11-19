@@ -31,3 +31,14 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Optional: SMS / WhatsApp reminders (docs/ENV_SETUP.md section 4b)
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      - key: TWILIO_MESSAGING_SERVICE_SID
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false

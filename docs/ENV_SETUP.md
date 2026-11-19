@@ -80,6 +80,18 @@ Gmail with an app password:
 
 Alternatives: Resend, Brevo, Mailgun or Amazon SES SMTP credentials work the same way (`smtps://user:pass@host:465`). For production deliverability, verify your sending domain (SPF/DKIM) with the provider.
 
+## 4b. SMS and WhatsApp reminders: `TWILIO_*` (optional)
+Signed-in users can verify a mobile number (one-time code via Twilio Verify) and get a text 1 day (and 3 hours, if they picked it) before deadlines in their tracker. Nothing is sent without these settings; the Profile section only appears once they are set.
+
+1. **Account**: [console.twilio.com](https://console.twilio.com) → *Account info*: copy **Account SID** → `TWILIO_ACCOUNT_SID` and **Auth token** → `TWILIO_AUTH_TOKEN`. A trial account can only text numbers you verified in the console; upgrade before launch.
+2. **Verify service** (phone codes): *Verify → Services → Create new*, name it HackElite, enable SMS (and WhatsApp if you want) → copy the **Service SID** (`VA…`) → `TWILIO_VERIFY_SERVICE_SID`.
+3. **SMS sender**: *Messaging → Services → Create*, add a sender → **Messaging Service SID** (`MG…`) → `TWILIO_MESSAGING_SERVICE_SID` (or put a Twilio number in `TWILIO_SMS_FROM`).
+   - **India**: SMS to Indian numbers needs **DLT registration** (your business as Principal Entity, a sender ID/header, and approved templates) with an operator portal such as Jio, Airtel or Vodafone Idea, then the DLT details added in Twilio. The reminder text is: `HackElite: "<event>" closes in <time>. <link> Reply STOP to stop reminders.` Register that template.
+4. **WhatsApp** (often easier first): *Messaging → Try it out → WhatsApp* gives a sandbox number (`+14155238886`) to test with → `TWILIO_WHATSAPP_FROM`. For real users, register a WhatsApp sender and get the template approved.
+5. **Replies (STOP/START)**: set the *incoming message* webhook of your Messaging Service / number / WhatsApp sender to `<APP_URL>/api/sms/inbound` (HTTP POST). The server checks Twilio's signature with your auth token, so `APP_URL` must be exactly the public URL Twilio calls.
+6. Optional: `SMS_DEFAULT_COUNTRY_CODE` (default `+91`, used when someone types a 10-digit number) and `SMS_DAILY_CAP_PER_USER` (default 4).
+7. Check with `npm run integrations:check twilio` (or Admin → Integrations).
+
 ## 5. Listing sources
 
 Most sources need nothing. Two free keys add coverage:

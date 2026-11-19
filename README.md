@@ -59,7 +59,7 @@ Hackathons, case competitions and coding contests are scattered across Devpost, 
 ### 📅 Never miss a deadline
 - **Register click** saves the event to your **tracker** as *applied*
 - **Add to Google / Outlook / Apple**, or turn on a **live private calendar feed** with your own reminders
-- **Email reminders** before deadlines (verified, opt-in, idempotent)
+- **Email reminders** before deadlines (verified, opt-in, idempotent), and **SMS / WhatsApp reminders** via Twilio (verified number, STOP to opt out)
 
 ### 👥 Team up
 - **Connect** with people (opt-in discovery, never shows your email), **live DMs** over WebSockets
