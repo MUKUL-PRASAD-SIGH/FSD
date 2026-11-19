@@ -11,6 +11,32 @@ import { track } from '../analytics.js';
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const KIND = { registration: 'Registration closes', submission: 'Submissions close', event_start: 'Starts (register before)', event_end: 'Ends' };
 
+const REASONS = [['wrong_dates', 'Dates are wrong'], ['wrong_prize', 'Prize is wrong'], ['wrong_location', 'Location is wrong'], ['broken_link', 'Registration link is broken'], ['closed', 'It has already closed'], ['duplicate', 'It is listed twice'], ['spam_or_fake', 'Spam or fake'], ['other', 'Something else']];
+
+// "Something is wrong with this listing" → goes to the admin review queue and emails the admins
+function ReportProblem({ listingId, signedIn }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
+  const [state, setState] = useState('');
+  const toast = useToast();
+  if (!signedIn) return <p className="small muted">Spotted a mistake? <Link to="/login">Sign in</Link> to report it.</p>;
+  if (state === 'sent') return <p className="small ok" role="status">Thanks! An admin will check this listing.</p>;
+  if (!open) return <button className="link small" onClick={() => setOpen(true)}>⚑ Report a problem with this listing</button>;
+  async function send(e) {
+    e.preventDefault(); setState('busy');
+    try { await api.reportListing(listingId, reason, note); setState('sent'); } catch (x) { toast(x.message, 'err'); setState(''); }
+  }
+  return (
+    <form className="panel report" onSubmit={send}>
+      <h2>What’s wrong?</h2>
+      <div className="chips">{REASONS.map(([v, l]) => <button type="button" key={v} className={`chip ${reason === v ? 'on' : ''}`} aria-pressed={reason === v} onClick={() => setReason(v)}>{l}</button>)}</div>
+      <label>Details (optional)<textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. the organiser page says registration closes on the 20th" /></label>
+      <div className="row"><button className="btn primary" disabled={!reason || state === 'busy'}>Send to admins</button><button type="button" className="btn ghost" onClick={() => setOpen(false)}>Cancel</button></div>
+    </form>
+  );
+}
+
 export default function ListingDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -37,6 +63,12 @@ export default function ListingDetail() {
         {user && <button className="btn ghost" onClick={toggle} aria-pressed={!!saved}>{saved ? `★ In tracker (${saved.status})` : '☆ Save to tracker'}</button>}
         <AddToCalendar listing={d} />
       </div>
+      {d.verify?.length > 0 && (
+        <aside className="verify" role="note" aria-label="Please double-check">
+          <strong>⚠ Please double-check on the organiser’s page</strong>
+          <ul>{d.verify.map((v) => <li key={v}>{v}</li>)}</ul>
+        </aside>
+      )}
       <dl className="facts">
         <div><dt>{KIND[d.deadlineKind] || 'Deadline'}</dt><dd>{fmt(d.deadline)}</dd></div>
         {d.startDate && <div><dt>Event starts</dt><dd>{fmt(d.startDate)}</dd></div>}
@@ -53,6 +85,7 @@ export default function ListingDetail() {
       {d.description && <section className="panel"><h2>About</h2><p>{d.description}</p></section>}
       <HackathonAgent listing={d} />
       <p className="small muted">Details are copied from {d.platform}; the organiser’s page is the source of truth.{d.prize?.inr && d.prize.currency && d.prize.currency !== 'INR' ? ` Rupee amount is an estimate (${inr(d.prize.inr)}).` : ''}</p>
+      <ReportProblem listingId={d.id} signedIn={!!user} />
     </article>
   );
 }
