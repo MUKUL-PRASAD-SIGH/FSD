@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { api } from '../api.js';
-import { ProGate } from './Plan.jsx';
+import { ProGate } from '../premium/Plan.jsx';
 
 const EXAMPLES = ['Which hackathons near me fit my resume?', 'Online AI competitions with big prizes closing this month', 'What should I add to my skills to qualify for more events?'];
 

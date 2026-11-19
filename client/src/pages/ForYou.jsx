@@ -18,7 +18,7 @@ export default function ForYou() {
 
   return (
     <>
-      <div className="row-between"><h1>For you</h1><span className={`pill ${pro ? '' : 'warm'}`}>{pro ? 'Pro rubric' : 'Basic picks'}</span></div>
+      <div className="row-between"><h1>For you</h1><span className={`pill ${pro ? '' : 'warm'}`}>{pro ? 'Personalised ranking' : 'Basic picks'}</span></div>
       <ResumeStudio onChange={load} />
       {!data.hasSignal ? (
         <Empty>We don’t know enough about you yet. <Link to="/profile">Add skills and interests{pro ? ' or upload your resume' : ''}</Link> and this page fills in.</Empty>

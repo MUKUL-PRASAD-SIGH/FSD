@@ -147,6 +147,16 @@ export const api = {
   adminBreakdowns: (days = 30) => request(`/admin/analytics/breakdowns?days=${days}`),
   adminAssistant: (question, history = []) => j('POST', '/admin/assistant', { question, history }),
 
+  adminReview: () => request('/admin/review'),
+  reviewListingOk: (id) => j('POST', `/admin/review/listings/${id}/ok`),
+  reviewReport: (id, action) => j('POST', `/admin/review/reports/${id}`, { action }),
+  patchCollege: (id, body) => j('PATCH', `/admin/colleges/${id}`, body),
+  adminColleges: (q = '') => request(`/admin/colleges?q=${encodeURIComponent(q)}`),
+
+  colleges: (q = '') => request(`/colleges?q=${encodeURIComponent(q)}&limit=10`, { auth: false }),
+  onboarding: () => request('/me/onboarding'),
+  reportListing: (id, reason, note = '') => j('POST', `/listings/${id}/report`, { reason, note }),
+
   // analytics intake (write-only)
   track: (event) => request('/track', { method: 'POST', body: event }),
   heartbeat: (seconds) => request('/track/heartbeat', { method: 'POST', body: { seconds } }),

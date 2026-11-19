@@ -80,7 +80,7 @@ export function Register() {
     try { const r = await google({ credential, accountType: type, ...extras }); nav(home(r.user), { replace: true }); } catch (x) { setErr(x.message); }
   }
   return (
-    <Shell title="Create your account" sub={lister ? 'Organisers can publish events after an admin approves the account.' : 'Free forever. Upgrade to Pro for resume-powered picks.'}>
+    <Shell title="Create your account" sub={lister ? 'Organisers can publish events after an admin approves the account.' : 'Free, with every feature. Takes 30 seconds.'}>
       <div className="seg" role="tablist" aria-label="Account type">
         <button type="button" role="tab" aria-selected={!lister} className={!lister ? 'on' : ''} onClick={() => setType('user')}>I’m looking for events</button>
         <button type="button" role="tab" aria-selected={lister} className={lister ? 'on' : ''} onClick={() => setType('lister')}>I run events</button>
