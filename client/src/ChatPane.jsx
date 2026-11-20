@@ -25,23 +25,39 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
 
   const add = useCallback((m) => setMsgs((l) => (l.some((x) => x.id === m.id) ? l : [...l, m])), []);
 
-  // Catch up on anything the socket missed (it was down, the tab slept, the network blipped): fetch the latest page and merge.
+  // The room this pane currently shows, and the messages loaded for it (read synchronously by sync)
+  const roomRef = useRef(roomId);
+  const msgsRef = useRef([]);
+  useEffect(() => { msgsRef.current = msgs; }, [msgs]);
+
+  // Catch up on anything the socket missed (it was down, the tab slept, the network blipped): fetch the latest page, and
+  // keep paging back until it overlaps what is already loaded (so a long gap is filled completely), then merge.
+  // A response that arrives after the user switched rooms is dropped.
   const sync = useCallback(async () => {
+    const room = roomId;
     try {
-      const r = await api.roomMessages(roomId);
+      const known = new Set(msgsRef.current.map((m) => m.id));
+      let page = await api.roomMessages(room);
+      const got = [...page.messages];
+      for (let i = 0; i < 5 && known.size && page.messages.length >= 40 && !page.messages.some((m) => known.has(m.id)); i++) {
+        page = await api.roomMessages(room, page.messages[0].createdAt);
+        got.unshift(...page.messages);
+      }
+      if (roomRef.current !== room) return;
       let unseen = false;
       setMsgs((l) => {
-        const fresh = r.messages.filter((m) => !l.some((x) => x.id === m.id));
+        const fresh = got.filter((m, i) => !l.some((x) => x.id === m.id) && got.findIndex((y) => y.id === m.id) === i);
         if (!fresh.length) return l;
         unseen = fresh.some((m) => m.senderId !== user.id);
         return [...l, ...fresh].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       });
-      if (unseen) api.markRead(roomId).then(refresh).catch(() => {});
+      if (unseen) api.markRead(room).then(refresh).catch(() => {});
     } catch { /* offline or signed out; the next sync retries */ }
   }, [roomId, user.id, refresh]);
 
   useEffect(() => {
     let live = true;
+    roomRef.current = roomId; msgsRef.current = [];
     setMsgs([]); setLoading(true); setError(''); setTyping(''); stick.current = true;
     setActiveRoom(roomId);
     api.roomMessages(roomId).then((r) => { if (!live) return; setMsgs(r.messages); setMore(r.messages.length >= 40); }).catch((e) => live && setError(e.message)).finally(() => live && setLoading(false));
