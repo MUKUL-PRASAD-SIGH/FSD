@@ -18,13 +18,15 @@
 
 From the command line, with [Newman](https://www.npmjs.com/package/newman):
 
+Keep passwords out of the command line (it ends up in shell history and is visible to other processes). Copy the environment to a private file that git ignores, fill it in there, and point Newman at it:
+
 ```bash
-npx newman run docs/postman/HackElite.postman_collection.json \
-  -e docs/postman/HackElite.local.postman_environment.json \
-  --env-var baseUrl=http://localhost:5050 \
-  --env-var userEmail=you@example.com --env-var userPassword='…' \
-  --env-var adminEmail=admin@example.com --env-var adminPassword='…'
+cp docs/postman/HackElite.local.postman_environment.json docs/postman/private.postman_environment.json   # git-ignored
+# edit private.postman_environment.json: baseUrl, userEmail, userPassword, adminEmail, adminPassword
+npx newman run docs/postman/HackElite.postman_collection.json -e docs/postman/private.postman_environment.json
 ```
+
+Use test accounts, not your real admin account, when pointing it at a shared database.
 
 ## Notes
 - Folders 4 and 5 write a few analytics events (a page view, a listing view, a search for "postman test", 30 s of time) and two admin AI questions to the audit log. Point it at a test database if that matters.
