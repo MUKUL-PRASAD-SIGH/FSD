@@ -134,9 +134,39 @@ test('inbound STOP / START webhook: signature required', async () => {
   assert.equal((await User.findById(ana.id)).notify.smsReminders, true);
 });
 
-test('removing the number turns text reminders off', async () => {
+test('no available sender: nothing is marked as sent, so the reminder goes out once texting works again', async () => {
+  const { config } = require('../config/env');
+  const saved = { ...config.twilio };
+  await ReminderLog.deleteMany({ user: ana.id, channel: { $in: ['sms', 'whatsapp'] } });
+  config.twilio.messagingServiceSid = ''; config.twilio.smsFrom = ''; config.twilio.whatsappFrom = '';
+  const before = sent.length;
+  await runReminders({ now: new Date(Date.now() + 5 * 60000) });
+  assert.equal(sent.length, before);
+  assert.equal(await ReminderLog.countDocuments({ user: ana.id, channel: { $in: ['sms', 'whatsapp'] } }), 0, 'no claim is kept');
+  Object.assign(config.twilio, saved);
+  await runReminders({ now: new Date(Date.now() + 5 * 60000) });
+  assert.ok(sent.length > before, 'sent once a sender is available again');
+});
+
+test('WhatsApp template: with a content SID, reminders use ContentSid + variables instead of free text', async () => {
+  const { config } = require('../config/env');
+  config.twilio.whatsappTemplateSid = 'HX00000000000000000000000000000000';
+  await User.updateOne({ _id: ana.id }, { $set: { 'phone.channel': 'whatsapp' } });
+  await ReminderLog.deleteMany({ user: ana.id, channel: { $in: ['sms', 'whatsapp'] } });
+  await runReminders({ now: new Date(Date.now() + 5 * 60000) });
+  const last = sent.at(-1);
+  assert.equal(last.ContentSid, 'HX00000000000000000000000000000000');
+  assert.equal(last.Body, undefined);
+  assert.equal(JSON.parse(last.ContentVariables)[2], '1 day');
+  config.twilio.whatsappTemplateSid = '';
+});
+
+test('removing the number turns text reminders off but keeps the hourly code limit', async () => {
   const r = await call('DELETE', '/api/me/phone', { token: ana.token });
   assert.equal(r.status, 200);
   assert.equal(r.body.user.phone.verified, false);
   assert.equal(r.body.user.notify.smsReminders, false);
+  // ana already used 1 code this hour (verified then removed): 2 more are allowed, then the limit holds
+  for (let i = 0; i < 2; i++) assert.equal((await call('POST', '/api/me/phone/start', { token: ana.token, body: { phone: `+91 9000000${10 + i}0` } })).status, 200);
+  assert.equal((await call('POST', '/api/me/phone/start', { token: ana.token, body: { phone: '+91 9000000300' } })).status, 429, 'remove/verify cannot reset the limit');
 });
