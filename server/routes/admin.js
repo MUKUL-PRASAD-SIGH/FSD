@@ -223,6 +223,7 @@ router.patch('/colleges/:id', asyncRoute(async (req, res) => {
     const clash = await College.findOne({ key: collegeSvc.key(name), _id: { $ne: c._id } });
     if (clash) return res.status(409).json({ error: `“${clash.name}” already exists. Merge into it instead.` });
     c.name = name; c.key = collegeSvc.key(name); c.reviewed = true;
+    await c.save(); // save the directory first, so a failure can never leave profiles pointing at a name that doesn't exist
     await User.updateMany({ college: prev }, { $set: { college: name } });
   } else if (b.action === 'merge') {
     const into = await College.findById(b.into).catch(() => null);

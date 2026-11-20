@@ -24,6 +24,8 @@ function validName(name) {
   if (name.length < 3 || name.length > 140) return 'College name should be 3 to 140 characters';
   if (!/[a-z]{3}/i.test(name)) return 'Enter the college name in letters';
   if (/https?:|www\.|@|\.(com|in|org|net)\b/i.test(name)) return 'Enter just the college name, not a link or email';
+  // "(ABC)" normalises to nothing (bracketed text is ignored when matching), so there would be nothing to match on
+  if (key(name).length < 2) return 'Enter the full college name, not just an abbreviation in brackets';
   return null;
 }
 
