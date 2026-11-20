@@ -152,5 +152,5 @@ server {
 - [ ] SMTP verified with `npm run integrations:check smtp` (your own domain, SPF/DKIM set up)
 - [ ] Google OAuth origin added, consent screen published
 - [ ] `npm audit` clean (CI enforces high severity)
-- [ ] The [bracketed] placeholders on `/privacy` and `/terms` are replaced and the text reviewed for your jurisdiction (e.g. India's DPDP Act 2023). It already mentions: crawling event pages, anonymous question counts (opt-out), Gemini data sharing if enabled, email reminders ([CRAWLER.md](CRAWLER.md))
+- [ ] The operator details on `/privacy` and `/terms` (`OPERATOR` in `client/src/pages/Legal.jsx`) are current and the text reviewed for your jurisdiction (e.g. India's DPDP Act 2023). It already mentions: crawling event pages, anonymous question counts (opt-out), Gemini data sharing if enabled, email reminders ([CRAWLER.md](CRAWLER.md))
 - [ ] You chose a licence for the repository

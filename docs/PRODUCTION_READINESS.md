@@ -27,7 +27,7 @@
 2. **Real hosting tier.** Render's free plan sleeps after inactivity (first request after sleep takes tens of seconds) and Atlas M0 is a shared 512 MB cluster without backups. For real users: a paid always-on instance, and an Atlas tier with backups.
 3. **Atlas network access for the host.** You allowed your own IP. The hosting provider connects from different addresses, so either add its outbound IPs or use `0.0.0.0/0` with a long, unique database password and a database user limited to this one database.
 4. **Email on your own domain.** Password reset, verification and admin alerts all need email, and production now refuses to start without `SMTP_URL`. Gmail SMTP works but has low daily sending limits and weak deliverability. Use a transactional provider (Brevo, Resend, Amazon SES) with SPF/DKIM on your domain.
-5. **Legal text.** Replace the `[bracketed]` placeholders on `/privacy` and `/terms` (entity name, contact email, hosting region, jurisdiction) and have them reviewed. India's DPDP Act 2023 applies to personal data of people in India.
+5. ~~**Legal text.**~~ ✅ Filled in on 20 November 2026 for an individual operator (Mukul Prasad, Bengaluru; Indian law; grievance contact; under-18 consent). The details live in one `OPERATOR` block in `client/src/pages/Legal.jsx`; update it if you register a company, and get a legal review before you scale.
 
 ## Information-leak review
 
