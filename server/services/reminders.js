@@ -60,13 +60,19 @@ async function remindUser(user, now) {
     }
     for (const m of textLeads) {
       if (textsToday >= config.twilio.dailyCap) break;
-      const channel = user.phone.channel === 'whatsapp' && sms.canSend('whatsapp') ? 'whatsapp' : 'sms';
-      if (!due(dl, m) || !(await claim(user, l, m, channel))) continue;
+      // the person's preferred channel, else the other one; skip entirely when neither can send (no claim is kept)
+      const channel = [user.phone.channel === 'whatsapp' ? 'whatsapp' : 'sms', user.phone.channel === 'whatsapp' ? 'sms' : 'whatsapp'].find((c) => sms.canSend(c));
+      if (!channel || !due(dl, m) || !(await claim(user, l, m, channel))) continue;
+      const release = () => ReminderLog.deleteOne({ user: user._id, listing: l._id, minutes: m, channel }).catch(() => {}); // the next run retries
       try {
-        await sms.send({ to: user.phone.number, channel, body: `HackElite: "${clip(l.title, 60)}" closes in ${lead(m)}. ${l.url} Reply STOP to stop reminders.` });
-        textsToday += 1; sent += 1;
+        const r = await sms.send({
+          to: user.phone.number, channel,
+          body: `HackElite: "${clip(l.title, 60)}" closes in ${lead(m)}. ${l.url} Reply STOP to stop reminders.`,
+          variables: { 1: clip(l.title, 60), 2: lead(m), 3: l.url },
+        });
+        if (r.sent) { textsToday += 1; sent += 1; } else await release();
       } catch (e) {
-        await ReminderLog.deleteOne({ user: user._id, listing: l._id, minutes: m, channel }).catch(() => {}); // let the next run retry
+        await release();
         console.warn('sms reminder failed:', e.message);
       }
     }
