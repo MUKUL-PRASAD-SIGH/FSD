@@ -1,5 +1,6 @@
 // The complete product journey, in-process (part of `npm test`). Same script as the live runner (`npm run e2e`), see helpers/journey.js.
 process.env.NODE_ENV = 'test';
+process.env.PLANS_ENABLED = 'true'; // these suites check the Free/Pro rules, which stay in the code for when plans come back
 process.env.MONGO_DB_NAME = 'hackelite_journey_test';
 process.env.JWT_SECRET = process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 ? process.env.JWT_SECRET : 'journey-test-secret-journey-test-secret-0123456789';
 process.env.ADMIN_EMAIL = 'admin-journey@example.com';

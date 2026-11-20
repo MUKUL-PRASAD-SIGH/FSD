@@ -25,6 +25,21 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
 
   const add = useCallback((m) => setMsgs((l) => (l.some((x) => x.id === m.id) ? l : [...l, m])), []);
 
+  // Catch up on anything the socket missed (it was down, the tab slept, the network blipped): fetch the latest page and merge.
+  const sync = useCallback(async () => {
+    try {
+      const r = await api.roomMessages(roomId);
+      let unseen = false;
+      setMsgs((l) => {
+        const fresh = r.messages.filter((m) => !l.some((x) => x.id === m.id));
+        if (!fresh.length) return l;
+        unseen = fresh.some((m) => m.senderId !== user.id);
+        return [...l, ...fresh].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+      if (unseen) api.markRead(roomId).then(refresh).catch(() => {});
+    } catch { /* offline or signed out; the next sync retries */ }
+  }, [roomId, user.id, refresh]);
+
   useEffect(() => {
     let live = true;
     setMsgs([]); setLoading(true); setError(''); setTyping(''); stick.current = true;
@@ -45,6 +60,21 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
     socket.on('message:new', onMsg); socket.on('typing', onTyping);
     return () => { socket.off('message:new', onMsg); socket.off('typing', onTyping); clearTimeout(typingTimer.current); };
   }, [socket, roomId, user.id, add, refresh]);
+
+  // Re-sync whenever the live channel (re)connects or the tab comes back into view, and keep a safety poll running:
+  // fast while the socket is down, slow while it is up (it only guards against a silently dead connection).
+  useEffect(() => {
+    if (!connected) return undefined;
+    sync();
+    return undefined;
+  }, [connected, sync]);
+  useEffect(() => {
+    const t = setInterval(sync, connected ? 15000 : 3000);
+    const onVisible = () => { if (document.visibilityState === 'visible') sync(); };
+    window.addEventListener('focus', onVisible); window.addEventListener('online', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(t); window.removeEventListener('focus', onVisible); window.removeEventListener('online', onVisible); document.removeEventListener('visibilitychange', onVisible); };
+  }, [connected, sync]);
 
   useEffect(() => { const el = box.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [msgs, typing]);
   const onScroll = () => { const el = box.current; if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; };

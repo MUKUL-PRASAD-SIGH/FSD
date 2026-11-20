@@ -40,6 +40,14 @@ const listingSchema = new mongoose.Schema(
     // Cross-source attribution: the same opportunity found on other platforms (see services/ingest/dedupe.js)
     alsoOn: { type: [{ source: String, platform: String, url: String, _id: false }], default: [] },
     inferred: { type: [String], default: [] }, // fields we had to infer, e.g. "deadline from event end"
+    // Data-quality flags (services/listingQuality.js) and user problem reports. score >= 2 lands in Admin → review.
+    quality: {
+      issues: { type: [String], default: [] },
+      score: { type: Number, default: 0 },
+      checkedAt: Date,
+      reports: { type: Number, default: 0 },
+      reviewedAt: Date, // an admin looked at it and left it as is
+    },
 
 
     // Moderation + ownership (manual listings by approved listers)
@@ -55,6 +63,7 @@ const listingSchema = new mongoose.Schema(
 
 listingSchema.index({ source: 1, externalId: 1 }, { unique: true, partialFilterExpression: { externalId: { $type: 'string' } } });
 listingSchema.index({ status: 1, deadline: 1 });
+listingSchema.index({ 'quality.score': -1, status: 1 });
 listingSchema.index({ source: 1, refreshedAt: 1 });
 listingSchema.index({ status: 1, platform: 1, deadline: 1 });
 listingSchema.index({ title: 'text', organiser: 'text', tags: 'text', skills: 'text' });

@@ -1,6 +1,7 @@
 // End-to-end test: boots the real Express app against a REAL MongoDB in an isolated database
 // (hackelite_e2e_test, dropped afterwards) and drives it over HTTP exactly like the browser does.
 process.env.NODE_ENV = 'test';
+process.env.PLANS_ENABLED = 'true'; // these suites check the Free/Pro rules, which stay in the code for when plans come back
 process.env.MONGO_DB_NAME = 'hackelite_e2e_test';
 process.env.JWT_SECRET = process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 ? process.env.JWT_SECRET : 'e2e-test-secret-e2e-test-secret-0123456789';
 process.env.ADMIN_EMAIL = 'admin-e2e@example.com';

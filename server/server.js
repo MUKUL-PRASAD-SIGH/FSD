@@ -20,7 +20,7 @@ function buildApp() {
   app.use(sanitize);
 
   // Liveness: the process is up. Readiness: it can actually serve (MongoDB connected). Orchestrators route on the latter.
-  app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+  app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString(), localDb: config.dbIsLocal }));
   app.get('/api/health/ready', (_req, res) => {
     const db = mongoose.connection.readyState === 1;
     res.status(db ? 200 : 503).json({ ok: db, db: db ? 'up' : 'down', uptimeSec: Math.round(process.uptime()) });
@@ -38,6 +38,9 @@ function buildApp() {
   app.use('/api/assistant', require('./routes/assistant'));
   app.use('/api/lister', require('./routes/lister'));
   app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/track', require('./routes/track'));
+  app.use('/api/colleges', require('./routes/colleges'));
+  app.use('/api/sms', require('./routes/sms'));
   if (process.env.SERVE_CLIENT === 'true') serveClient(app);
   app.use(notFound);
   app.use(errorHandler);
@@ -76,6 +79,13 @@ async function migrate() {
   await users.updateMany({ role: 'student' }, { $set: { role: 'user' } });
   await users.updateMany({ password: { $exists: true }, hasPassword: { $exists: false } }, { $set: { hasPassword: true } });
   await Listing.collection.updateMany({ status: { $exists: false } }, { $set: { status: 'published' } });
+  await require('./services/colleges').seed(); // idempotent: only inserts colleges that are missing
+  // Reminders became per channel: replace the old (user, listing, minutes) unique index, which would block an SMS
+  // reminder for a lead time that was already emailed
+  const ReminderLog = require('./models/ReminderLog');
+  await ReminderLog.collection.dropIndex('user_1_listing_1_minutes_1').catch(() => {}); // absent on new databases
+  await ReminderLog.collection.updateMany({ channel: { $exists: false } }, { $set: { channel: 'email' } });
+  await ReminderLog.syncIndexes().catch((e) => console.warn('reminder index sync:', e.message));
 }
 
 // Creates the first admin from ADMIN_EMAIL / ADMIN_PASSWORD. Admins can never be created through the public API.
@@ -98,7 +108,10 @@ async function afterIngest() {
   const { indexListings } = require('./services/rag');
   const { runNotifier } = require('./services/notifier');
   const [indexed, notified] = [await indexListings(), await runNotifier()];
-  return { indexed, notified };
+  // Flag confusing listings and email admins a daily digest when something new needs review
+  const quality = await require('./services/listingQuality').scanOpen();
+  await require('./services/adminAlerts').qualityDigest(quality).catch((e) => console.warn('quality digest failed:', e.message));
+  return { indexed, notified, quality };
 }
 
 async function start() {
@@ -106,6 +119,7 @@ async function start() {
   await connectDB();
   await migrate();
   await ensureAdmin();
+  await require('./services/adminAccess').promoteExisting();
   const app = buildApp();
   const server = app.listen(config.port, () => console.log(`API listening on http://localhost:${config.port}`));
   require('./services/realtime').init(server); // live chat and notifications (Socket.IO on the same port)

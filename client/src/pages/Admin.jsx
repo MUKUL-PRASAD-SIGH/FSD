@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { Analytics, AdminAI } from './AdminAnalytics.jsx';
+import AdminReview from './AdminReview.jsx';
 
 function Stats({ tick }) {
   const [s, setS] = useState(null);
@@ -174,10 +176,10 @@ function Audit() {
 }
 
 export default function Admin() {
-  const [tab, setTab] = useState('sources');
+  const [tab, setTab] = useState(() => { const t = new URLSearchParams(window.location.search).get('tab'); return ['review', 'ask AI'].includes(t) ? t : 'analytics'; });
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
-  const tabs = { sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
+  const tabs = { analytics: Analytics, review: AdminReview, 'ask AI': AdminAI, sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
   const Tab = tabs[tab];
   return (
     <>

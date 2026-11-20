@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { useToast } from '../toast.jsx';
+import CollegePicker from '../CollegePicker.jsx';
+import PhoneReminders from '../PhoneReminders.jsx';
 import ResumeStudio from '../ResumeStudio.jsx';
 import SocialSettings from '../SocialSettings.jsx';
 import { PasswordMeter, passwordOk } from '../forms.jsx';
@@ -55,7 +57,7 @@ function Security() {
 }
 
 export default function Profile() {
-  const { user, setUser, isPro } = useAuth();
+  const { user, setUser, isPro, plansEnabled } = useAuth();
   const fileRef = useRef(null);
   const [skills, setSkills] = useState((user.skills || []).join(', '));
   const [interests, setInterests] = useState(user.interests || []);
@@ -95,7 +97,7 @@ export default function Profile() {
   async function save(e) {
     e.preventDefault(); setBusy(true); setErr(''); setMsg('');
     try {
-      const r = await api.updateProfile({ skills: toList(skills), interests, college, bio, preferences: prefs, location: loc, education: { level: edu.level || '', gradYear: edu.gradYear }, notify });
+      const r = await api.updateProfile({ skills: toList(skills), interests, college, bio, preferences: prefs, location: loc, education: { level: edu.level || '', gradYear: edu.gradYear }, notify: { ...notify, smsReminders: undefined } });
       sync(r.user); setMsg('Saved. Your picks and notifications update immediately.');
     } catch (x) { setErr(x.message); } finally { setBusy(false); }
   }
@@ -104,7 +106,8 @@ export default function Profile() {
 
   return (
     <>
-      <div className="row-between"><h1>Your profile</h1><Link className={`pill ${isPro ? '' : 'warm'}`} to="/plan">{isPro ? 'Pro plan' : 'Free plan · upgrade'}</Link></div>
+      <div className="row-between"><h1>Your profile</h1>{plansEnabled && <Link className={`pill ${isPro ? '' : 'warm'}`} to="/plan">{isPro ? 'Pro plan' : 'Free plan · upgrade'}</Link>}</div>
+      {user.role === 'user' && !user.onboarding?.done && <p className="banner">Your feed isn’t fully tuned yet. <Link to="/welcome">Finish the 1-minute setup →</Link></p>}
 
       <ResumeStudio title="Resume" onChange={(u) => u && sync(u)} />
       <SocialSettings />
@@ -121,7 +124,7 @@ export default function Profile() {
             <option value="">—</option><option value="school">School</option><option value="undergraduate">Undergraduate</option><option value="postgraduate">Postgraduate</option><option value="phd">PhD</option><option value="working">Working</option></select></label>
           <label>Graduation year<input type="number" min="1990" max="2040" value={edu.gradYear || ''} onChange={(e) => setEdu({ ...edu, gradYear: e.target.value })} /></label>
         </div>
-        {!isPro && <p className="muted small">Location and education are used by the Pro ranking. <Link to="/plan">Upgrade</Link></p>}
+        {plansEnabled && !isPro && <p className="muted small">Location and education are used by the Pro ranking. <Link to="/plan">Upgrade</Link></p>}
         <fieldset><legend>Preferences</legend>
           <div className="chips">
             {['ONLINE', 'OFFLINE', 'HYBRID'].map((m) => <button type="button" key={m} className={`chip ${prefs.modes?.includes(m) ? 'on' : ''}`} aria-pressed={!!prefs.modes?.includes(m)} onClick={() => setPrefs({ ...prefs, modes: toggle(prefs.modes, m) })}>{m.toLowerCase()}</button>)}
@@ -140,7 +143,17 @@ export default function Profile() {
             <label>Only if match ≥ {notify.minMatch}%<input type="range" min="30" max="95" step="5" value={notify.minMatch} onChange={(e) => setNotify({ ...notify, minMatch: Number(e.target.value) })} /></label>
           </div>
         </fieldset>
-        <label>College / institute<input value={college} onChange={(e) => setCollege(e.target.value)} /></label>
+        <PhoneReminders />
+        <fieldset><legend>Privacy</legend>
+          <label className="chk">
+            <input type="checkbox" checked={user.privacy?.shareUsage !== false}
+              onChange={(e) => api.updateProfile({ privacy: { shareUsage: e.target.checked } }).then((r) => { setUser(r.user); toast(r.user.privacy.shareUsage ? 'Usage analytics on' : 'Usage analytics off: your activity is now counted anonymously', 'good'); }).catch((er) => toast(er.message, 'err'))} />
+            {' '}let HackElite admins see my activity (pages viewed and time on the site) to improve the platform
+          </label>
+          <p className="small muted">Off: your visits still count in anonymous totals, but nothing is tied to your account and time on the site is not recorded. Saved immediately.</p>
+        </fieldset>
+        <CollegePicker value={college} onChange={setCollege} />
+        <p className="small muted">Can’t find yours? Type the full name and choose “Add”. It becomes available to everyone.</p>
         <label>About you<textarea rows={2} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Anything else that should shape your picks" /></label>
         {msg && <p className="ok" role="status">{msg}</p>}{err && <p className="error" role="alert">{err}</p>}
         <button className="btn primary" disabled={busy}>Save profile</button>

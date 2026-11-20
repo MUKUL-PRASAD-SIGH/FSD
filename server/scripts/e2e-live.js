@@ -21,7 +21,7 @@ const PRO_KEY = 'LIVE-E2E-PRO-KEY';
 const SECRET = 'live-e2e-secret-live-e2e-secret-0123456789abcdef';
 
 // the parent process shares the same isolated settings so it can seed data and call services directly
-Object.assign(process.env, { NODE_ENV: 'test', MONGO_DB_NAME: DB_NAME, JWT_SECRET: SECRET, ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password, PRO_ACTIVATION_KEYS: PRO_KEY, GEMINI_API_KEY: '', SMTP_URL: '', GOOGLE_CLIENT_ID: '', EMBEDDINGS_PROVIDER: 'local', HIBP_CHECK: 'off' });
+Object.assign(process.env, { NODE_ENV: 'test', MONGO_DB_NAME: DB_NAME, JWT_SECRET: SECRET, ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password, PRO_ACTIVATION_KEYS: PRO_KEY, PLANS_ENABLED: 'true', GEMINI_API_KEY: '', SMTP_URL: '', GOOGLE_CLIENT_ID: '', EMBEDDINGS_PROVIDER: 'local', HIBP_CHECK: 'off' });
 
 const c = process.stdout.isTTY ? { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', y: '\x1b[33m', x: '\x1b[0m' } : { g: '', r: '', d: '', b: '', y: '', x: '' };
 const freePort = () => new Promise((res, rej) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => res(port)); }); s.on('error', rej); });
@@ -43,7 +43,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     cwd: SERVER_DIR,
     env: {
       ...process.env, NODE_ENV: 'development', API_PORT: String(port), PORT: String(port), CLIENT_ORIGIN: `http://localhost:${port}`, APP_URL: `http://localhost:${port}`,
-      MONGO_DB_NAME: DB_NAME, JWT_SECRET: SECRET, ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password, PRO_ACTIVATION_KEYS: PRO_KEY,
+      MONGO_DB_NAME: DB_NAME, JWT_SECRET: SECRET, ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password, PRO_ACTIVATION_KEYS: PRO_KEY, PLANS_ENABLED: 'true',
       DISABLE_INGEST: 'true', DISABLE_RATE_LIMITS: '1', SERVE_CLIENT: 'false', SMTP_URL: '', GOOGLE_CLIENT_ID: '', GEMINI_API_KEY: '', EMBEDDINGS_PROVIDER: 'local', HIBP_CHECK: 'off',
     },
     stdio: ['ignore', 'pipe', 'pipe'],

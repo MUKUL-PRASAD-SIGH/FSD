@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { track } from '../analytics.js';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -29,6 +30,13 @@ export default function Home() {
   const spotlight = data.listings[0];
 
   useEffect(() => { api.stats().then(setStats).catch(() => {}); }, []);
+  // Record what people search for once they stop typing (not every keystroke)
+  useEffect(() => {
+    const q = f.q.trim();
+    if (q.length < 2) return undefined;
+    const t = setTimeout(() => track('search', { query: q }), 1500);
+    return () => clearTimeout(t);
+  }, [f.q]);
   useEffect(() => {
     if (!user) { setSavedIds(new Set()); return; }
     api.saved().then((r) => setSavedIds(new Set(r.saved.map((s) => s.listing.id)))).catch(() => {});

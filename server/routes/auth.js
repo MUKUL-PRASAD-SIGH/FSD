@@ -14,6 +14,7 @@ const { sendMail } = require('../services/mailer');
 const google = require('../services/google');
 const { isBreached } = require('../utils/breached');
 const { config } = require('../config/env');
+const { promoteIfAdminEmail } = require('../services/adminAccess');
 
 const MAX_FAILS = 5;
 const LOCK_MS = 15 * 60 * 1000;
@@ -45,7 +46,7 @@ async function notifyAdmins(user) {
 }
 
 router.get('/config', (_req, res) =>
-  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl })
+  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl, plansEnabled: config.plansEnabled, smsChannels: require('../services/sms').enabled() ? require('../services/sms').channels() : [] })
 );
 
 router.post('/password-check', authLimiter, (req, res) => {
@@ -103,6 +104,7 @@ router.post('/login', authLimiter, asyncRoute(async (req, res) => {
     return bad(res, 'Invalid email or password', 401);
   }
   if (user.failedLogins || user.lockUntil) { user.failedLogins = 0; user.lockUntil = undefined; await user.save(); }
+  await promoteIfAdminEmail(user, req);
   audit(req, 'auth.login', { actor: user, target: user._id });
   res.json(session(user));
 }));
@@ -137,6 +139,7 @@ router.post('/google', authLimiter, asyncRoute(async (req, res) => {
     }
   }
   if (user.status !== 'active') return bad(res, 'This account has been disabled', 403);
+  await promoteIfAdminEmail(user, req);
   audit(req, 'auth.login', { actor: user, target: user._id, meta: { via: 'google' } });
   res.json({ ...session(user), isNew: user.createdAt && Date.now() - user.createdAt.getTime() < 5000 });
 }));
@@ -168,6 +171,8 @@ router.delete('/me', protect, authLimiter, asyncRoute(async (req, res) => {
     Saved.deleteMany({ user: user._id }),
     Notification.deleteMany({ user: user._id }),
     require('../models/UserQuery').deleteMany({ user: user._id }),
+    require('../models/Activity').deleteMany({ user: user._id }),
+    require('../models/UsageDay').deleteMany({ user: user._id }),
     require('../services/erase').eraseUser(user._id),
     Listing.updateMany({ createdBy: user._id }, { $set: { status: 'unpublished' } }), // keep records, take them offline
   ]);
@@ -240,6 +245,7 @@ router.post('/verify', authLimiter, asyncRoute(async (req, res) => {
   user.emailVerified = true; user.verifyTokenHash = undefined; user.verifyTokenExpires = undefined;
   await user.save();
   audit(req, 'auth.email_verified', { actor: user, target: user._id });
+  await promoteIfAdminEmail(user, req);
   res.json({ ok: true });
 }));
 

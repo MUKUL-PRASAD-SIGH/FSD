@@ -35,7 +35,7 @@ export default function Teams() {
   return (
     <>
       <div className="row-between"><h1>Teams</h1><button className="btn primary" onClick={() => setOpen(!open)}>{open ? 'Cancel' : '+ New team'}</button></div>
-      <p className="muted">A team gets its own private room and an invite list. Pro members create and host teams; anyone invited can join and chat for free.</p>
+      <p className="muted">A team gets its own private room and an invite list. Create one for any hackathon you are tracking, or join one you are invited to.</p>
 
       {open && !isPro && (
         <div className="panel upsell">

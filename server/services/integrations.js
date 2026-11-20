@@ -76,6 +76,20 @@ const checks = {
       return 'server accepted the login (set SMTP_TEST_TO=you@example.com to also send a test email)';
     },
   },
+  twilio: {
+    configured: () => !!(config.twilio.accountSid && config.twilio.authToken),
+    run: async () => {
+      const { accountSid, authToken, verifyServiceSid, messagingServiceSid, smsFrom, whatsappFrom } = config.twilio;
+      const auth = `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`;
+      const get = async (url) => { const r = await fetch(url, { headers: { Authorization: auth }, signal: AbortSignal.timeout(15000) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(`${r.status}: ${j.message || 'request failed'}`); return j; };
+      const acct = await get(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`);
+      const parts = [`account ${acct.status}${acct.type === 'Trial' ? ' (trial: can only text verified numbers)' : ''}`];
+      if (verifyServiceSid) { const v = await get(`https://verify.twilio.com/v2/Services/${verifyServiceSid}`); parts.push(`Verify service "${v.friendly_name}" ok`); } else parts.push('TWILIO_VERIFY_SERVICE_SID missing (phone verification off)');
+      parts.push(messagingServiceSid || smsFrom ? 'SMS sender set' : 'no SMS sender (TWILIO_MESSAGING_SERVICE_SID or TWILIO_SMS_FROM)');
+      parts.push(whatsappFrom ? 'WhatsApp sender set' : 'no WhatsApp sender');
+      return parts.join('; ');
+    },
+  },
   kaggle: {
     configured: () => !!(process.env.KAGGLE_USERNAME && process.env.KAGGLE_KEY),
     run: async () => {

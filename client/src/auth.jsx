@@ -35,7 +35,9 @@ export function AuthProvider({ children }) {
 
   const value = {
     user, ready, cfg, setUser, refresh,
-    isPro: user?.plan?.tier === 'pro' || user?.role === 'admin',
+    // "has every feature": the server decides (always true while paid plans are switched off)
+    isPro: user?.plan?.unlocked ?? (user?.plan?.tier === 'pro' || user?.role === 'admin'),
+    plansEnabled: !!cfg.plansEnabled,
     login: async (b) => finish(await api.login(b)),
     register: async (b) => finish(await api.register(b)),
     google: async (b) => finish(await api.google(b)),
