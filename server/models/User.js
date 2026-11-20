@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema(
     lockUntil: Date,
     tokenVersion: { type: Number, default: 0 },
     passwordChangedAt: Date,
+    // When the current password was set through the emailed reset link, i.e. by someone who controls the inbox.
+    // A password chosen at sign-up could have been chosen by whoever typed the email, so it is not "proven".
+    passwordProvenAt: Date,
     resetTokenHash: { type: String, select: false },
     resetTokenExpires: { type: Date, select: false },
     verifyTokenHash: { type: String, select: false },
