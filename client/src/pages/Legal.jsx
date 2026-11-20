@@ -47,7 +47,8 @@ export function Privacy() {
         <li>Hosting and database: {OPERATOR.hosting}. Your data may be stored on servers outside India.</li>
         <li>Email delivery: {OPERATOR.emailProvider}.</li>
         <li>Text messages: Twilio (your number and the reminder text), only if you turn text reminders on.</li>
-        <li>Google, if you use Google sign-in, and Google Gemini if AI answers are switched on (the question and the relevant listing text are sent to generate an answer).</li>
+        <li>Google, if you use Google sign-in.</li>
+        <li>Google Gemini, when AI answers are switched on: to answer a question we send it your question, the relevant listing or event-page text, your last few messages in that conversation, and, for the personal assistant, the parts of your resume that match the question. It is not sent your email, password, phone number or other people’s data.</li>
       </ul>
       <p>These providers only process data to provide their service to us.</p>
 

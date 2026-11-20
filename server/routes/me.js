@@ -127,7 +127,8 @@ router.post('/phone/verify', heavyLimiter, asyncRoute(async (req, res) => {
   if (!u.phone?.pending) return res.status(400).json({ error: 'Request a code first' });
   if (!/^\d{4,10}$/.test(code)) return res.status(400).json({ error: 'Enter the code from the message', fields: { code: 'Invalid code' } });
   if (!(await sms.checkVerification(u.phone.pending, code))) return res.status(400).json({ error: 'That code is wrong or has expired', fields: { code: 'Wrong code' } });
-  u.phone.number = u.phone.pending; u.phone.pending = ''; u.phone.verifiedAt = new Date(); u.phone.codeSends = [];
+  // codeSends is kept on purpose: the hourly limit must survive verify/remove, or it could be bypassed to send paid texts
+  u.phone.number = u.phone.pending; u.phone.pending = ''; u.phone.verifiedAt = new Date();
   if (req.body?.enableReminders !== false) u.notify.smsReminders = true;
   await u.save();
   audit(req, 'phone.verified', { meta: { to: sms.mask(u.phone.number), channel: u.phone.channel } });
@@ -136,7 +137,7 @@ router.post('/phone/verify', heavyLimiter, asyncRoute(async (req, res) => {
 
 router.delete('/phone', asyncRoute(async (req, res) => {
   const u = req.user;
-  u.phone = { number: '', pending: '', verifiedAt: undefined, channel: 'sms', codeSends: [] };
+  u.phone = { number: '', pending: '', verifiedAt: undefined, channel: 'sms', codeSends: u.phone?.codeSends || [] }; // keep the send history (rate limit)
   u.notify.smsReminders = false;
   await u.save();
   audit(req, 'phone.removed');

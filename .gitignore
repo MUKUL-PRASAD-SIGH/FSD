@@ -40,3 +40,5 @@ reference/
 .DS_Store
 Thumbs.db
 .cache/
+# Private Postman environments with real credentials
+docs/postman/private*.json

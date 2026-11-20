@@ -32,7 +32,12 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"   # pas
 - Check: `npm run integrations:check jwt admin_bootstrap`.
 
 ### More admins: `ADMIN_EMAILS`
-Comma-separated, e.g. `ADMIN_EMAILS=you@gmail.com,cofounder@gmail.com`. An account with one of these emails becomes an admin **the first time it signs in with a verified email**: either it clicked the verification link, or it used Google sign-in. Registering someone else's address does nothing, because unverified accounts are never promoted. No password goes in `.env`. These addresses (plus every admin account) also receive admin alert emails: a user added a new college, someone reported a listing, and a once-a-day digest of confusing listings. Alerts need `SMTP_URL`.
+Comma-separated, e.g. `ADMIN_EMAILS=you@gmail.com,cofounder@gmail.com`. An account with one of these emails becomes an admin only when **every way into it is controlled by the inbox owner**, which stops account pre-hijacking (someone registering your address first with their own password):
+- **Sign in with Google** (easiest): Google proves the inbox. If the account had a password that was never proven, it is removed and other sessions are ended, then you are admin.
+- **Or "Forgot password"**: set your password through the emailed reset link, and you are admin right away.
+- A password chosen at sign-up is **not** enough, even after clicking the verification link, because whoever typed the email chose it.
+
+No password goes in `.env`. These addresses (plus every admin account) also receive admin alert emails: a user added a new college, someone reported a listing, and a once-a-day digest of confusing listings. Alerts need `SMTP_URL`.
 
 ### Plans: `PLANS_ENABLED`, `PRO_ACTIVATION_KEYS`
 `PLANS_ENABLED=false` (the default) makes every feature free for every signed-in user and hides the Plan page and every Pro label. Set it to `true` to bring back the Free/Pro split; only then do the keys below matter.
@@ -87,7 +92,7 @@ Signed-in users can verify a mobile number (one-time code via Twilio Verify) and
 2. **Verify service** (phone codes): *Verify → Services → Create new*, name it HackElite, enable SMS (and WhatsApp if you want) → copy the **Service SID** (`VA…`) → `TWILIO_VERIFY_SERVICE_SID`.
 3. **SMS sender**: *Messaging → Services → Create*, add a sender → **Messaging Service SID** (`MG…`) → `TWILIO_MESSAGING_SERVICE_SID` (or put a Twilio number in `TWILIO_SMS_FROM`).
    - **India**: SMS to Indian numbers needs **DLT registration** (your business as Principal Entity, a sender ID/header, and approved templates) with an operator portal such as Jio, Airtel or Vodafone Idea, then the DLT details added in Twilio. The reminder text is: `HackElite: "<event>" closes in <time>. <link> Reply STOP to stop reminders.` Register that template.
-4. **WhatsApp** (often easier first): *Messaging → Try it out → WhatsApp* gives a sandbox number (`+14155238886`) to test with → `TWILIO_WHATSAPP_FROM`. For real users, register a WhatsApp sender and get the template approved.
+4. **WhatsApp** (often easier first): *Messaging → Try it out → WhatsApp* gives a sandbox number (`+14155238886`) to test with → `TWILIO_WHATSAPP_FROM`. For real users, register a WhatsApp sender, create a content template in *Messaging → Content Template Builder* with the body `HackElite: "{{1}}" closes in {{2}}. {{3}}`, get it approved, and put its SID (`HX…`) in `TWILIO_WHATSAPP_TEMPLATE_SID`. WhatsApp only allows free text within 24 hours of the user's last message; reminders outside that window must use the template.
 5. **Replies (STOP/START)**: set the *incoming message* webhook of your Messaging Service / number / WhatsApp sender to `<APP_URL>/api/sms/inbound` (HTTP POST). The server checks Twilio's signature with your auth token, so `APP_URL` must be exactly the public URL Twilio calls.
 6. Optional: `SMS_DEFAULT_COUNTRY_CODE` (default `+91`, used when someone types a 10-digit number) and `SMS_DAILY_CAP_PER_USER` (default 4).
 7. Check with `npm run integrations:check twilio` (or Admin → Integrations).

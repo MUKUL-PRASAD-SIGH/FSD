@@ -65,15 +65,52 @@ test('admin by email: only after the email is verified', async () => {
   assert.equal(b.user.role, 'user', 'registering an admin address does not make you admin');
   let r = await login('boss@example.com');
   assert.equal(r.body.user.role, 'user', 'still not admin while the email is unverified');
+  // Pre-hijacking guard: the address is verified now, but the password was chosen at sign-up by whoever typed the email,
+  // so a password sign-in must NOT promote. The owner proves control through the emailed reset link.
   await User.updateOne({ email: 'boss@example.com' }, { $set: { emailVerified: true } });
   r = await login('boss@example.com');
-  assert.equal(r.body.user.role, 'admin', 'promoted on the first verified sign-in');
+  assert.equal(r.body.user.role, 'user', 'a sign-up password never grants admin, even after verification');
+  assert.ok(await mongoose.connection.collection('auditlogs').findOne({ action: 'auth.admin_promotion_held' }));
+  const { outbox } = require('../services/mailer');
+  await call('POST', '/api/auth/forgot', { body: { email: 'boss@example.com' } });
+  const link = outbox.filter((m) => m.to === 'boss@example.com').at(-1).text.match(/reset\?token=([\w-]+)/)[1];
+  const NEW_PW = 'N3w-Owner-Passw0rd!x';
+  r = await call('POST', '/api/auth/reset', { body: { token: link, password: NEW_PW } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.user.role, 'admin', 'promoted once the inbox owner sets the password via the reset link');
+  assert.equal((await login('boss@example.com')).status, 401, 'the original sign-up password no longer works');
+  r = await call('POST', '/api/auth/login', { body: { email: 'boss@example.com', password: NEW_PW } });
+  assert.equal(r.body.user.role, 'admin');
   admin = { token: r.body.token, id: r.body.user.id };
   assert.equal((await call('GET', '/api/admin/stats', { token: admin.token })).status, 200);
   const other = await register('Not Boss');
   await User.updateOne({ _id: other.id }, { $set: { emailVerified: true } });
   assert.equal((await login(other.email)).body.user.role, 'user');
   assert.ok(await mongoose.connection.collection('auditlogs').findOne({ action: 'auth.admin_promoted' }));
+});
+
+test('admin via Google sign-in removes a password the owner never proved, and ends other sessions', async () => {
+  const { promoteIfAdminEmail } = require('../services/adminAccess');
+  const { config } = require('../config/env');
+  config.adminEmails.push('second@example.com');
+  const attacker = await register('Pre Hijacker', 'second@example.com');
+  await User.updateOne({ _id: attacker.id }, { $set: { emailVerified: true } });
+  const u = await User.findById(attacker.id);
+  assert.equal(await promoteIfAdminEmail(u, null, { via: 'google' }), true);
+  const after = await User.findById(attacker.id).select('+password');
+  assert.equal(after.role, 'admin');
+  assert.equal(after.hasPassword, false); assert.equal(after.password, undefined);
+  assert.equal((await login('second@example.com')).status, 401, 'the sign-up password is gone');
+  assert.equal((await call('GET', '/api/auth/me', { token: attacker.token })).status, 401, 'existing sessions are revoked');
+});
+
+test('college rename: a name that normalises to nothing is refused before any profile changes', async () => {
+  const c = await College.create({ name: 'Temp Rename College', key: colleges.key('Temp Rename College'), source: 'user', reviewed: false });
+  await User.updateOne({ _id: alice.id }, { $set: { college: 'Temp Rename College' } });
+  const r = await call('PATCH', `/api/admin/colleges/${c._id}`, { token: admin.token, body: { action: 'rename', name: '(ABC)' } });
+  assert.equal(r.status, 400);
+  assert.equal((await User.findById(alice.id)).college, 'Temp Rename College', 'profiles untouched');
+  assert.equal((await College.findById(c._id)).name, 'Temp Rename College');
 });
 
 test('colleges: Bengaluru seed, aliases, canonical names, user additions visible to the next person, junk refused', async () => {

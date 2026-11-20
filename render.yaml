@@ -42,3 +42,5 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_FROM
         sync: false
+      - key: TWILIO_WHATSAPP_TEMPLATE_SID
+        sync: false

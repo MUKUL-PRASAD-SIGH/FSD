@@ -63,7 +63,8 @@ async function checkVerification(phone, code) {
   return r.status === 'approved';
 }
 
-async function send({ to, body, channel = 'sms' }) {
+// variables: template values for WhatsApp ({ 1: event, 2: time left, 3: link }); ignored for SMS
+async function send({ to, body, channel = 'sms', variables }) {
   const text = String(body).slice(0, 640);
   if (!canSend(channel)) {
     outbox.push({ to, body: text, channel, at: new Date() });
@@ -72,7 +73,15 @@ async function send({ to, body, channel = 'sms' }) {
     return { sent: false, reason: 'not configured' };
   }
   const params = { To: channel === 'whatsapp' ? `whatsapp:${to}` : to, Body: text };
-  if (channel === 'whatsapp') params.From = `whatsapp:${t().whatsappFrom}`;
+  if (channel === 'whatsapp') {
+    params.From = `whatsapp:${t().whatsappFrom}`;
+    // Business-initiated WhatsApp messages need an approved template outside the 24-hour customer-service window
+    if (t().whatsappTemplateSid && variables) {
+      delete params.Body;
+      params.ContentSid = t().whatsappTemplateSid;
+      params.ContentVariables = JSON.stringify(variables);
+    }
+  }
   else if (t().messagingServiceSid) params.MessagingServiceSid = t().messagingServiceSid;
   else params.From = t().smsFrom;
   const r = await call(apiBase(), `/2010-04-01/Accounts/${t().accountSid}/Messages.json`, params);

@@ -38,6 +38,9 @@ const config = {
     messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || '', // preferred sender for SMS (handles sender IDs / DLT)
     smsFrom: process.env.TWILIO_SMS_FROM || '', // alternative to a messaging service: a Twilio number or approved sender ID
     whatsappFrom: process.env.TWILIO_WHATSAPP_FROM || '', // e.g. +14155238886 (sandbox) or your approved WhatsApp sender
+    // Approved WhatsApp content template (HX…) with variables {{1}} event, {{2}} time left, {{3}} link. Required for
+    // reminders outside the 24-hour reply window; without it, plain text only works in the sandbox / within 24 h.
+    whatsappTemplateSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID || '',
     defaultCountryCode: process.env.SMS_DEFAULT_COUNTRY_CODE || '+91',
     dailyCap: Number(process.env.SMS_DAILY_CAP_PER_USER) || 4,
   },
