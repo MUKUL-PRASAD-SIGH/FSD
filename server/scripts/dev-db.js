@@ -11,7 +11,10 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 (async () => {
   const dbPath = path.join(__dirname, '..', '..', '.data', 'mongo');
   fs.mkdirSync(dbPath, { recursive: true });
+  // Pinned to MongoDB 7.0: data in .data/mongo was written by 7.0, and mongod only upgrades one major at a time, so the
+  // package's newer default (8.2) refuses to open it (exit code 62). Set MONGOMS_VERSION to move up deliberately.
   const mongod = await MongoMemoryServer.create({
+    binary: { version: process.env.MONGOMS_VERSION || '7.0.24' },
     instance: { port: Number(process.env.MONGO_PORT || 27017), ip: '127.0.0.1', dbPath, storageEngine: 'wiredTiger' },
   });
   console.log(`MongoDB ready: ${mongod.getUri()}hackelite_db  (data: ${dbPath})`);
