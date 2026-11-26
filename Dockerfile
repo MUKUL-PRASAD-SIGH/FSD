@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build: compile the React client, then ship one small Node image that serves API + client.
-FROM node:22-alpine AS client
+FROM node:25-alpine AS client
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:25-alpine
 ENV NODE_ENV=production SERVE_CLIENT=true API_PORT=5050
 WORKDIR /app
 COPY server/package*.json server/
