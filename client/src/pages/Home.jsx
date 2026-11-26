@@ -1,179 +1,169 @@
-import { useEffect, useState } from 'react';
-import { track } from '../analytics.js';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
-import { ListingCard, Empty, SkeletonGrid, closes, prizeText } from '../components.jsx';
+import { closes, prizeText } from '../components.jsx';
+import { Avatar, CountUp, Emblem, Reveal, Ring, reducedMotion, useInView } from '../ui.jsx';
+import './landing.css';
 
-const TYPES = ['', 'HACKATHON', 'CODING', 'COMPETITION', 'CASE STUDY', 'QUIZ', 'DESIGN', 'INNOVATION', 'CONTEST'];
-const QUICK_TYPES = [
-  { label: 'All opportunities', value: '' },
-  { label: 'Hackathons', value: 'HACKATHON' },
-  { label: 'Coding', value: 'CODING' },
-  { label: 'Design', value: 'DESIGN' },
-  { label: 'Case studies', value: 'CASE STUDY' },
-];
+const TABS = [['HACKATHON', 'Hackathons'], ['CODING', 'Coding'], ['DESIGN', 'Design'], ['CASE STUDY', 'Case studies']];
+const HEADLINE = ['Your', 'next', 'big', 'idea', 'deserves', 'a'];
+const Arrow = () => <svg aria-hidden="true" viewBox="0 0 20 20" className="ld-arrow"><path d="M4 10h11M10 5l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
-const Arrow = () => <svg aria-hidden="true" viewBox="0 0 20 20" className="landing-arrow"><path d="M4 10h11M10 5l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-const Spark = () => <svg aria-hidden="true" viewBox="0 0 24 24" className="landing-spark"><path d="m12 2 1.9 7.1L21 11l-7.1 1.9L12 20l-1.9-7.1L3 11l7.1-1.9L12 2Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="m19 15 .9 3.1L23 19l-3.1.9L19 23l-.9-3.1L15 19l3.1-.9L19 15Z" fill="currentColor" /></svg>;
+// Interactive showcase: pick a category, real listings rotate in a glass "device" card (pauses on hover/focus).
+function Showcase() {
+  const [tab, setTab] = useState(TABS[0][0]);
+  const [items, setItems] = useState([]);
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => { let live = true; setI(0); api.listings({ type: tab, limit: 4, sort: 'deadline' }).then((r) => live && setItems(r.listings)).catch(() => live && setItems([])); return () => { live = false; }; }, [tab]);
+  useEffect(() => {
+    if (paused || items.length < 2 || reducedMotion()) return undefined;
+    const t = setInterval(() => setI((n) => (n + 1) % items.length), 5200);
+    return () => clearInterval(t);
+  }, [paused, items.length]);
+  const cur = items[i];
+  const prize = cur && prizeText(cur.prize);
+  const c = cur && closes(cur.deadline);
+  return (
+    <Reveal className="ld-show" aria-label="Opportunity showcase">
+      <div className="ld-tabs" role="tablist" aria-label="Opportunity type">
+        {TABS.map(([v, l]) => <button key={v} role="tab" aria-selected={tab === v} className={tab === v ? 'on' : ''} onClick={() => setTab(v)}>{l}</button>)}
+      </div>
+      <div className="ld-stage" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+        {cur ? (
+          <Link key={cur.id} to={`/listing/${cur.id}`} className="ld-device">
+            <span className="ld-device-top"><span className="ld-live"><i /> {cur.mode?.toLowerCase()}</span><span className={`ld-due ${c.tone}`}>◷ {c.text}</span></span>
+            <h3>{cur.title}</h3>
+            <p>{cur.organiser || 'Open to builders everywhere'} · {cur.platform}</p>
+            <span className="ld-device-bottom">
+              <span className="ld-prize"><small>prize</small><b>{prize ? prize.text : 'See listing'}</b></span>
+              <span className="ld-fee"><small>entry</small><b>{/free/i.test(cur.fee) ? 'Free' : cur.fee}</b></span>
+              <span className="ld-go">View <Arrow /></span>
+            </span>
+          </Link>
+        ) : <div className="ld-device ld-device-empty">Loading live listings…</div>}
+        <div className="ld-dots" role="group" aria-label="Choose listing">{items.map((x, n) => <button key={x.id} className={n === i ? 'on' : ''} aria-label={`Show ${x.title}`} aria-pressed={n === i} onClick={() => setI(n)} />)}</div>
+      </div>
+    </Reveal>
+  );
+}
+
+function Step({ n, title, text, to, label }) {
+  const [ref, seen] = useInView('0px 0px -25% 0px');
+  return (
+    <div ref={ref} className={`ld-step ${seen ? 'lit' : ''}`}>
+      <span className="ld-step-n">{n}</span>
+      <div><h3>{title}</h3><p>{text}</p><Link to={to} className="ld-link">{label} <Arrow /></Link></div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [stats, setStats] = useState(null);
-  const [f, setF] = useState({ q: '', type: '', platform: '', mode: '', free: false, closing: '', sort: 'deadline' });
-  const [data, setData] = useState({ listings: [], total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [savedIds, setSavedIds] = useState(new Set());
-  const [limit, setLimit] = useState(24);
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  const spotlight = data.listings[0];
-
+  const [q, setQ] = useState('');
+  const heroRef = useRef(null);
   useEffect(() => { api.stats().then(setStats).catch(() => {}); }, []);
-  // Record what people search for once they stop typing (not every keystroke)
-  useEffect(() => {
-    const q = f.q.trim();
-    if (q.length < 2) return undefined;
-    const t = setTimeout(() => track('search', { query: q }), 1500);
-    return () => clearTimeout(t);
-  }, [f.q]);
-  useEffect(() => {
-    if (!user) { setSavedIds(new Set()); return; }
-    api.saved().then((r) => setSavedIds(new Set(r.saved.map((s) => s.listing.id)))).catch(() => {});
-  }, [user]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setLoading(true); setError('');
-      const p = { limit, sort: f.sort };
-      if (f.q) p.q = f.q; if (f.type) p.type = f.type; if (f.mode) p.mode = f.mode; if (f.platform) p.platform = f.platform;
-      if (f.free) p.free = 'true'; if (f.closing) p.closing = f.closing;
-      api.listings(p).then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false));
-    }, 200);
-    return () => clearTimeout(t);
-  }, [f, limit, retry]);
-
-  const set = (k, v) => { setF((o) => ({ ...o, [k]: v })); setLimit(24); };
-  const explore = () => document.getElementById('opportunities')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-  const chooseType = (value) => { set('type', value); explore(); };
-  const spotlightPrize = spotlight ? prizeText(spotlight.prize) : null;
-  const spotlightDeadline = spotlight ? closes(spotlight.deadline) : null;
+  const platforms = stats?.platforms?.map((p) => p.name) || [];
+  const go = (e) => { e.preventDefault(); nav(`/browse${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); };
 
   return (
-    <div className="home-page">
-      <section className="landing-hero" aria-labelledby="landing-title">
-        <div className="landing-copy">
-          <p className="landing-kicker"><span className="pulse-dot" /> THE OPPORTUNITY HUB FOR BUILDERS</p>
-          <h1 id="landing-title">Your next big idea deserves a <span>big stage.</span></h1>
-          <p className="landing-lede">Find hackathons, competitions, and challenges in one place. Get matched to the ones that fit you, then keep every deadline in reach.</p>
-
-          <form className="landing-search" role="search" onSubmit={(e) => { e.preventDefault(); explore(); }}>
+    <div className="ld">
+      <section className="ld-hero" ref={heroRef} aria-labelledby="ld-title">
+        <div className="ld-hero-copy">
+          <p className="ld-kicker"><span className="ld-pulse" /> The opportunity hub for builders</p>
+          <h1 id="ld-title">
+            {HEADLINE.map((w, n) => <span key={w} className="ld-word" style={{ '--i': n }}>{w}&nbsp;</span>)}
+            <span className="ld-word ld-hl" style={{ '--i': HEADLINE.length }}>big stage.</span>
+          </h1>
+          <p className="ld-lede">Hackathons, case competitions and contests from every platform, de-duplicated into one feed. Get matched to the ones that fit you, then never miss a deadline.</p>
+          <form className="ld-search" role="search" onSubmit={go}>
+            <label className="visually-hidden" htmlFor="ld-q">Search opportunities</label>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
-            <label className="visually-hidden" htmlFor="landing-search">Search opportunities</label>
-            <input id="landing-search" type="search" placeholder="Try AI, climate, design…" value={f.q} onChange={(e) => set('q', e.target.value)} />
-            <button className="btn primary" type="submit">Explore <Arrow /></button>
+            <input id="ld-q" type="search" placeholder="Try AI, climate, design…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <button className="btn primary">Explore <Arrow /></button>
           </form>
-
-          <div className="landing-quick" aria-label="Quick opportunity filters">
-            <span className="landing-quick-label">Popular:</span>
-            {QUICK_TYPES.slice(1).map((t) => <button key={t.value} type="button" className={`landing-chip ${f.type === t.value ? 'selected' : ''}`} aria-pressed={f.type === t.value} onClick={() => chooseType(t.value)}>{t.label}</button>)}
-          </div>
-
-          <div className="landing-actions">
-            <Link className="landing-text-link" to="/for-you">{user ? 'See your personal matches' : 'Get matches for your profile'} <Arrow /></Link>
-            <a className="landing-secondary-link" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
-          </div>
-
-          <div className="landing-proof" aria-label="Live opportunity statistics">
-            <div><strong>{stats ? stats.open.toLocaleString('en-IN') : '—'}</strong><span>open opportunities</span></div>
-            <i aria-hidden="true" />
-            <div><strong>{stats ? stats.platforms.length : '—'}</strong><span>platforms, one feed</span></div>
-            <i aria-hidden="true" />
-            <div><strong>{stats ? stats.closingWeek : '—'}</strong><span>closing this week</span></div>
+          <div className="ld-cta-row">
+            <Link className="ld-link" to={user ? '/for-you' : '/register'}>{user ? 'See your personal matches' : 'Create a free account'} <Arrow /></Link>
+            <a className="ld-link soft" href="#ld-how">See how it works ↓</a>
           </div>
         </div>
-
-        <div className="landing-visual" aria-label="Opportunity preview">
-          <div className="landing-orbit orbit-one" />
-          <div className="landing-orbit orbit-two" />
-          <div className="landing-glow" />
-          <div className="float-tag float-tag-top"><span className="float-icon"><Spark /></span><span><b>Made for your next move</b><small>Discover · Match · Build</small></span></div>
-          {spotlight ? (
-            <Link to={`/listing/${spotlight.id}`} className="spotlight-card" aria-label={`View ${spotlight.title}`}>
-              <div className="spotlight-top"><span className="spotlight-label"><span className="pulse-dot" /> LIVE OPPORTUNITY</span><span className="spotlight-index">SPOTLIGHT</span></div>
-              <div className="spotlight-art"><div className="spotlight-sun" /><div className="spotlight-horizon" /><span className="spotlight-star star-a">✦</span><span className="spotlight-star star-b">✧</span><span className="spotlight-star star-c">✦</span><span className="spotlight-monogram">{(spotlight.type || 'H').slice(0, 1)}</span></div>
-              <div className="spotlight-body">
-                <p className="spotlight-overline">{spotlight.type?.toLowerCase() || 'opportunity'} <span>·</span> {spotlight.mode?.toLowerCase() || 'online'}</p>
-                <h2>{spotlight.title}</h2>
-                <p className="spotlight-organiser">{spotlight.organiser || 'Open to builders everywhere'} <span>·</span> {spotlight.platform}</p>
-                <div className="spotlight-footer"><span className={`spotlight-deadline ${spotlightDeadline?.tone || ''}`}>◷ {spotlightDeadline?.text || 'Open now'}</span>{spotlightPrize ? <span className="spotlight-prize">{spotlightPrize.text}</span> : <span className="spotlight-prize">Explore details <Arrow /></span>}</div>
-              </div>
-              <div className="spotlight-open" aria-hidden="true"><Arrow /></div>
-            </Link>
-          ) : (
-            <div className="spotlight-card spotlight-empty"><div className="spotlight-top"><span className="spotlight-label"><span className="pulse-dot" /> YOUR NEXT MOVE</span><span className="spotlight-index">EXPLORE</span></div><div className="spotlight-art"><div className="spotlight-sun" /><div className="spotlight-horizon" /><span className="spotlight-monogram">H</span></div><div className="spotlight-body"><p className="spotlight-overline">A world of ideas starts here</p><h2>{loading ? 'Finding your next challenge…' : 'Your next stage is waiting.'}</h2><p className="spotlight-organiser">Fresh opportunities, gathered from across the web.</p><div className="spotlight-footer"><span className="spotlight-deadline">Discover something new</span></div></div></div>
-          )}
-          <div className="float-tag float-tag-bottom"><span className="float-check">✓</span><span><b>Deadlines, handled.</b><small>Keep the momentum going</small></span></div>
-          <span className="landing-visual-caption">A better way to find what’s next.</span>
+        <div className="ld-hero-art">
+          <Emblem size={440} parallax className="ld-emblem" />
+          <span className="ld-chip c1"><i className="ld-pulse" /><b><CountUp value={stats?.open} /></b> open now</span>
+          <span className="ld-chip c2"><b><CountUp value={stats?.closingWeek} /></b> closing this week</span>
+          <span className="ld-chip c3">✦ AI-matched to your resume</span>
         </div>
       </section>
 
-      <section className="landing-steps" id="how-it-works" aria-labelledby="steps-title">
-        <div className="landing-section-heading"><p className="landing-kicker">FROM IDEA TO ACTION</p><h2 id="steps-title">Make opportunity work for you.</h2><p>Less searching in circles. More time building something that matters.</p></div>
-        <div className="journey-grid">
-          <a href="#opportunities" className="journey-card">
-            <span className="journey-number">01</span><span className="journey-icon discover-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5M8 11l2-2 1.5 2 2.5-3" /></svg></span>
-            <h3>Find your next challenge</h3><p>Browse a fresh feed of hackathons, contests, and competitions from across platforms.</p><span className="journey-link">Explore the feed <Arrow /></span>
-          </a>
-          <Link to="/for-you" className="journey-card">
-            <span className="journey-number">02</span><span className="journey-icon match-icon"><Spark /></span>
-            <h3>See what fits you</h3><p>Get thoughtful picks based on your skills, interests, location, and resume.</p><span className="journey-link">Get matched <Arrow /></span>
-          </Link>
-          <Link to="/tracker" className="journey-card">
-            <span className="journey-number">03</span><span className="journey-icon track-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="3" /><path d="M8 3v4M16 3v4M4 10h16m-11 5 2 2 4-4" /></svg></span>
-            <h3>Keep your momentum</h3><p>Save opportunities, track your applications, and stay ahead of each deadline.</p><span className="journey-link">Open your tracker <Arrow /></span>
-          </Link>
+      {platforms.length > 0 && (
+        <div className="ld-marquee" aria-label="Sources we aggregate">
+          <div className="ld-track">{[...platforms, ...platforms].map((p, n) => <span key={p + n} aria-hidden={n >= platforms.length}>{p}</span>)}</div>
+        </div>
+      )}
+
+      <section className="ld-sec" aria-labelledby="ld-show-t">
+        <Reveal className="ld-head"><p className="ld-kicker">Live from the feed</p><h2 id="ld-show-t">See what is open right now.</h2><p>Real listings, straight from the organisers. Pick a category and watch the feed move.</p></Reveal>
+        <Showcase />
+      </section>
+
+      <section className="ld-sec" aria-labelledby="ld-bento-t">
+        <Reveal className="ld-head"><p className="ld-kicker">Everything in one place</p><h2 id="ld-bento-t">Built to get you from search to submitted.</h2></Reveal>
+        <div className="ld-bento">
+          <Reveal className="ld-tile t-match" delay={0}>
+            <div><h3>Resume-aware matching</h3><p>Upload your resume and every listing gets a 0 to 100 fit score with plain-English reasons.</p></div>
+            <div className="ld-match-demo"><Ring value={87} size={96} stroke={8} label="87" sub="match" /><ul><li>matches your React skills</li><li>online, no travel needed</li><li>closes in 9 days</li></ul></div>
+          </Reveal>
+          <Reveal className="ld-tile t-ask" delay={80}>
+            <h3>Ask in plain English</h3>
+            <div className="ld-prompt"><span>online AI hackathons with ₹1L+ prizes</span><i /></div>
+            <p>We read the filters out of your sentence.</p>
+          </Reveal>
+          <Reveal className="ld-tile t-feed" delay={120}>
+            <h3>One feed, every source</h3>
+            <div className="ld-orbs">{(platforms.length ? platforms : ['Devpost', 'Unstop', 'Devfolio']).slice(0, 7).map((p, n) => <span key={p} style={{ '--n': n }}>{p[0]}</span>)}</div>
+            <p><CountUp value={stats?.platforms?.length || 16} /> platforms, duplicates merged.</p>
+          </Reveal>
+          <Reveal className="ld-tile t-track" delay={160}>
+            <h3>Application tracker</h3>
+            <div className="ld-mini-board">{['saved', 'applied', 'won'].map((c, n) => <div key={c}><small>{c}</small>{Array.from({ length: 3 - n }, (_, k) => <i key={k} style={{ '--k': k }} />)}</div>)}</div>
+          </Reveal>
+          <Reveal className="ld-tile t-team" delay={200}>
+            <h3>Teams and chat</h3>
+            <div className="ld-stack">{['Asha Verma', 'Ravi K', 'Mina Das', 'Leo P'].map((n) => <Avatar key={n} name={n} size={42} />)}<span className="ld-plus">+2</span></div>
+            <p>Find teammates, invite them, chat live.</p>
+          </Reveal>
+          <Reveal className="ld-tile t-rem" delay={240}>
+            <h3>Deadline reminders</h3>
+            <div className="ld-bell"><span>◷</span><b>Closes in 2 days</b><small>We will remind you first.</small></div>
+          </Reveal>
         </div>
       </section>
 
-      <section className="opportunities-section" id="opportunities" aria-labelledby="opportunities-title">
-        <div className="opportunity-heading">
-          <div><p className="landing-kicker"><span className="pulse-dot" /> THE LIVE FEED</p><h2 id="opportunities-title">Find the one that moves you.</h2><p className="muted">Real opportunities. Direct links to the organisers. Your next step starts here.</p></div>
-          <Link to="/ask" className="btn ghost opportunity-ask">Have a question? Ask AI <Arrow /></Link>
+      <section className="ld-sec ld-how" id="ld-how" aria-labelledby="ld-how-t">
+        <Reveal className="ld-head"><p className="ld-kicker">How it works</p><h2 id="ld-how-t">Three steps. No more tab-hopping.</h2></Reveal>
+        <div className="ld-steps">
+          <Step n="01" title="Discover" text="Browse one fresh feed of hackathons, contests and competitions, filtered the way you think." to="/browse" label="Open the feed" />
+          <Step n="02" title="Match" text="Add your skills or resume and see what actually fits, with the reasons spelled out." to="/for-you" label="Get matched" />
+          <Step n="03" title="Track and team up" text="Save, apply, build a team and keep every deadline in view from one command centre." to="/tracker" label="Open the tracker" />
         </div>
-
-        <div className="landing-categories" role="group" aria-label="Filter opportunities by type">
-          {QUICK_TYPES.map((t) => <button key={t.value || 'all'} type="button" className={`landing-chip ${f.type === t.value ? 'selected' : ''}`} aria-pressed={f.type === t.value} onClick={() => set('type', t.value)}>{t.label}</button>)}
-        </div>
-
-        <section aria-label="More opportunity filters" className="filters">
-          <input type="search" placeholder="Search title, organiser, theme…" value={f.q} onChange={(e) => set('q', e.target.value)} aria-label="Search" />
-          <select value={f.type} onChange={(e) => set('type', e.target.value)} aria-label="Type">
-            {TYPES.map((t) => <option key={t} value={t}>{t ? t.toLowerCase() : 'all types'}</option>)}
-          </select>
-          <select value={f.platform} onChange={(e) => set('platform', e.target.value)} aria-label="Platform">
-            <option value="">all platforms</option>
-            {stats?.platforms.map((p) => <option key={p.name} value={p.name}>{p.name} ({p.count})</option>)}
-          </select>
-          <select value={f.mode} onChange={(e) => set('mode', e.target.value)} aria-label="Mode">
-            <option value="">any mode</option><option value="ONLINE">online</option><option value="OFFLINE">in person</option><option value="HYBRID">hybrid</option>
-          </select>
-          <select value={f.sort} onChange={(e) => set('sort', e.target.value)} aria-label="Sort">
-            <option value="deadline">soonest deadline</option><option value="prize">biggest prize</option><option value="popular">most registered</option>
-          </select>
-          <label className="chk"><input type="checkbox" checked={f.free} onChange={(e) => set('free', e.target.checked)} /> free</label>
-          <label className="chk"><input type="checkbox" checked={f.closing === 'week'} onChange={(e) => set('closing', e.target.checked ? 'week' : '')} /> closing this week</label>
-        </section>
-
-        {error && <div className="empty"><p className="error">Couldn’t load listings: {error}</p><button className="btn" onClick={() => setRetry((n) => n + 1)}>Try again</button></div>}
-        <div className="results-meta"><p className="muted small" aria-live="polite">{loading ? 'Finding opportunities…' : `${data.total} opportunity${data.total === 1 ? '' : 'ies'}`}</p>{(f.q || f.type || f.platform || f.mode || f.free || f.closing || f.sort !== 'deadline') && <button className="link small" onClick={() => { setF({ q: '', type: '', platform: '', mode: '', free: false, closing: '', sort: 'deadline' }); setLimit(24); }}>Clear filters</button>}</div>
-        {loading && !data.listings.length && <SkeletonGrid />}
-        <div className="grid">
-          {data.listings.map((l) => <ListingCard key={l.id} item={l} saved={savedIds.has(l.id)} />)}
-        </div>
-        {!loading && !error && !data.listings.length && <Empty>Nothing matches those filters. Try another category or clear a filter.</Empty>}
-        {data.listings.length < data.total && <button className="btn ghost center" onClick={() => setLimit(limit + 24)}>Show more opportunities <Arrow /></button>}
       </section>
+
+      <section className="ld-stats" aria-label="Live statistics">
+        <div><b><CountUp value={stats?.open} /></b><span>open opportunities</span></div>
+        <div><b><CountUp value={stats?.platforms?.length} /></b><span>platforms, one feed</span></div>
+        <div><b><CountUp value={stats?.closingWeek} /></b><span>closing this week</span></div>
+      </section>
+
+      {!user && (
+        <Reveal className="ld-final">
+          <Emblem size={170} />
+          <div><h2>Ready for your next big stage?</h2><p>Create a free account and get matched in minutes.</p>
+            <div className="ld-final-btns"><Link className="btn primary" to="/register">Get started free</Link><Link className="btn" to="/login">Sign in</Link></div></div>
+        </Reveal>
+      )}
     </div>
   );
 }

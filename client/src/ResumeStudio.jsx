@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Icon } from './ui.jsx';
 import { Link } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
@@ -59,7 +60,7 @@ export default function ResumeStudio({ onChange, title = 'Resume Studio' }) {
           className={`dz ${over ? 'over' : ''} ${busy ? 'busy' : ''}`} role="button" tabIndex={0} {...drop}
           onClick={pick} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && pick()}
         >
-          <span className="big" aria-hidden="true">{busy ? '⏳' : '📄'}</span>
+          <span className="big" aria-hidden="true"><Icon name={busy ? 'hourglass' : 'doc'} size="1.6em" /></span>
           <strong>{busy ? 'Reading your resume…' : 'Drop your resume here, or click to browse'}</strong>
           <span className="muted small">PDF, DOCX or TXT · up to 5 MB · you only need to do this once</span>
         </div>
@@ -85,7 +86,7 @@ export default function ResumeStudio({ onChange, title = 'Resume Studio' }) {
           </div>
         </>
       )}
-      <p className="private-note">🔒 Private to you. The file is parsed in memory and never kept; only you can see this analysis or the picks built from it.</p>
+      <p className="private-note"><Icon name="lock" /> Private to you. The file is parsed in memory and never kept; only you can see this analysis or the picks built from it.</p>
     </section>
   );
 }

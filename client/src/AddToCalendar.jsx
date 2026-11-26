@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from './ui.jsx';
 import { Link } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
@@ -6,7 +7,7 @@ import { useToast } from './toast.jsx';
 
 // "Add to calendar" for one listing: Google / Outlook links (no download needed) and an .ics file.
 // Signed in, the .ics carries your own reminders and tracker status; the generic file is the fallback.
-export default function AddToCalendar({ listing, label = '📅 Add to calendar' }) {
+export default function AddToCalendar({ listing, label = <><Icon name="calendar" /> Add to calendar</> }) {
   const { user } = useAuth();
   const toast = useToast();
   const [open, setOpen] = useState(false);

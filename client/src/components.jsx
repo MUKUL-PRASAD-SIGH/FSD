@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
@@ -21,7 +21,7 @@ export function closes(deadline) {
   return { text: new Date(deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), tone: '' };
 }
 
-const KIND = { registration: 'registration closes', submission: 'submissions close', event_start: 'starts', event_end: 'ends' };
+export const KIND = { registration: 'registration closes', submission: 'submissions close', event_start: 'starts', event_end: 'ends' };
 
 // Original currency first (what the organiser published); rupee conversion as a hint
 export function prizeText(p) {
@@ -34,8 +34,8 @@ export function prizeText(p) {
 const fmtFull = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null);
 const INTERACTIVE = 'a,button,input,select,textarea,summary,details,label';
 
-function Details({ item, prize, kind, onRegister }) {
-  const where = [item.city, item.state, item.country].filter(Boolean).join(', ');
+export function Details({ item, prize, kind, onRegister }) {
+  const where = [item.city, item.state, item.country].filter((x) => x && x !== '[object Object]').join(', ');
   const rows = [
     [kind[0].toUpperCase() + kind.slice(1), fmtFull(item.deadline)],
     item.startDate && ['Event starts', fmtFull(item.startDate)],
@@ -63,7 +63,7 @@ function Details({ item, prize, kind, onRegister }) {
   );
 }
 
-function Breakdown({ rec }) {
+export function Breakdown({ rec }) {
   const rows = rec.criteria || Object.entries(rec.breakdown).map(([key, v]) => ({ key, label: key, score: v, points: null, weight: null, detail: '' }));
   return (
     <div className="bars" aria-label="Score breakdown">
@@ -80,34 +80,39 @@ function Breakdown({ rec }) {
   );
 }
 
-export function ListingCard({ item, rec, saved, onSaveChange }) {
+// Save / register behaviour shared by every listing card design (Browse, For You, Ask, ...).
+export function useListingActions(item, saved, onSaveChange, from = '/browse') {
   const { user } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [isSaved, setIsSaved] = useState(!!saved);
-  const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const c = closes(item.deadline);
-  const prize = prizeText(item.prize);
-  const kind = KIND[item.deadlineKind] || 'closes';
-  const tone = rec ? (rec.score >= 70 ? 'hi' : rec.score >= 45 ? 'mid' : 'lo') : '';
-
+  useEffect(() => { setIsSaved(!!saved); }, [saved]);
   async function toggleSave() {
-    if (!user) return nav('/login', { state: { from: '/' } });
+    if (!user) return nav('/login', { state: { from } });
     setBusy(true);
     try {
       if (isSaved) await api.unsave(item.id); else await api.saveListing(item.id);
       setIsSaved(!isSaved); onSaveChange?.(item.id, !isSaved);
     } finally { setBusy(false); }
   }
-
-  const toast = useToast();
   // Clicking Register opens the organiser's page AND tracks it as "applied" for signed-in users (never downgrades a later stage)
   async function registered() {
     track('register_click', { listingId: item.id });
     if (!user) return;
     try { const r = await api.registered(item.id); setIsSaved(true); onSaveChange?.(item.id, true); toast(`Added to your tracker as ${r.saved.status}`, 'good'); } catch { /* the registration link still opens */ }
   }
+  return { isSaved, busy, toggleSave, registered };
+}
+
+export function ListingCard({ item, rec, saved, onSaveChange }) {
+  const { isSaved, busy, toggleSave, registered } = useListingActions(item, saved, onSaveChange);
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const c = closes(item.deadline);
+  const prize = prizeText(item.prize);
+  const kind = KIND[item.deadlineKind] || 'closes';
+  const tone = rec ? (rec.score >= 70 ? 'hi' : rec.score >= 45 ? 'mid' : 'lo') : '';
   const toggleCard = (e) => {
     if (e.target.closest(INTERACTIVE) || e.target.closest('.more')) return; // links, buttons and the open details are not toggles
     if (window.getSelection()?.toString()) return; // user is selecting text

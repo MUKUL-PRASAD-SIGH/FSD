@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Icon } from '../ui.jsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 
@@ -25,7 +26,7 @@ export function Bell({ data, reload }) {
   return (
     <div className="bell">
       <button className="btn ghost icon" aria-label={`Notifications, ${data.unread} unread`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        🔔{data.unread > 0 && <b className="badge">{data.unread > 9 ? '9+' : data.unread}</b>}
+        <Icon name="bell" />{data.unread > 0 && <b className="badge">{data.unread > 9 ? '9+' : data.unread}</b>}
       </button>
       {open && (
         <div className="drop" role="menu">

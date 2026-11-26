@@ -1,0 +1,47 @@
+/* For You: personalised intelligence. Prefix: fy- . Signature motion: rings and bars that fill when the page loads, staggered leaderboard. */
+.fy-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.fy-kicker { margin: 0 0 8px; color: var(--cyan); font: 700 .72rem var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.fy-hero h1 { margin: 0; font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -.055em; line-height: 1; }
+.fy-tier { padding: 7px 16px; border: 1px solid var(--home-line); border-radius: var(--r-pill); color: var(--warm); font-weight: 600; font-size: .85rem; } .fy-tier.pro { color: var(--lime); border-color: color-mix(in srgb, var(--lime) 55%, transparent); background: color-mix(in srgb, var(--lime) 8%, transparent); }
+
+.fy-tiles { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+.fy-tile { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 18px 20px; border: 1px solid var(--home-line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }
+.fy-tile strong { font-size: 2.6rem; line-height: 1; letter-spacing: -.05em; color: var(--lime); } .fy-tile > span { color: var(--muted); font-size: .9rem; } .fy-tile small { opacity: .7; }
+.fy-tile.hero { flex-direction: row; align-items: center; gap: 16px; background: radial-gradient(70% 120% at 0% 50%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 75%), var(--surface); } .fy-tile.hero .ring { font-size: 1.25rem; }
+.fy-tile.hero div { display: grid; gap: 2px; min-width: 0; } .fy-tile.hero b { font-size: .75rem; color: var(--cyan); font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; } .fy-tile.hero div span { color: var(--text); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fy-skel { min-height: 100px; animation: fy-shim 1.3s infinite; background: linear-gradient(90deg, var(--panel2), color-mix(in srgb, var(--accent) 22%, var(--line)), var(--panel2)); background-size: 220% 100%; }
+@keyframes fy-shim { from { background-position: 220% 0; } to { background-position: -220% 0; } }
+
+.fy-studio { margin-bottom: 16px; border: 1px solid var(--home-line); border-radius: 18px; background: color-mix(in srgb, var(--panel) 70%, transparent); } .fy-studio > summary { cursor: pointer; padding: 12px 18px; font-weight: 600; color: var(--cyan); } .fy-studio[open] > summary { border-bottom: 1px solid var(--home-line); } .fy-studio > :not(summary) { margin: 12px; }
+.fy-hidden { margin: 0 0 14px; color: var(--muted); font-size: .85rem; }
+.fy-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.fy-list { display: grid; gap: 14px; }
+
+.fy-card { position: relative; display: grid; grid-template-columns: auto auto 1fr; align-items: start; gap: 6px 16px; padding: 18px 20px; border: 1px solid var(--home-line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); animation: fy-in .55s cubic-bezier(.2, .8, .2, 1) calc(var(--i) * 60ms) both; transition: border-color .25s, box-shadow .25s; }
+.fy-card:hover { border-color: color-mix(in srgb, var(--lime) 50%, var(--line)); box-shadow: var(--glow-lime); }
+@keyframes fy-in { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+.fy-rank { align-self: center; color: color-mix(in srgb, var(--text) 24%, transparent); font: 800 1.5rem var(--mono); } .fy-card .ring { margin-top: 4px; font-size: 1rem; }
+.fy-main { min-width: 0; display: grid; gap: 6px; }
+.fy-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: 600 .74rem var(--mono); } .fy-due { color: var(--muted); } .fy-due.hot { color: var(--hot); } .fy-due.warm { color: var(--warm); } .fy-type { color: var(--muted); text-transform: lowercase; } .fy-prize { margin-left: auto; color: var(--lime); font-size: .95rem; }
+.fy-main h3 { margin: 0; font-size: 1.2rem; line-height: 1.25; letter-spacing: -.02em; } .fy-main h3 a { text-decoration: none; } .fy-main h3 a:hover { color: var(--cyan); } .fy-org { margin: 0; color: var(--muted); font-size: .85rem; }
+.fy-why { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; } .fy-why li { padding: 4px 11px; border: 1px solid color-mix(in srgb, var(--lime) 28%, var(--line)); border-radius: var(--r-pill); background: color-mix(in srgb, var(--lime) 6%, transparent); font-size: .78rem; } .fy-why li::before { content: '✓ '; color: var(--lime); }
+.fy-bars { display: grid; gap: 5px; margin-top: 4px; max-width: 460px; } .fy-bars div { display: grid; grid-template-columns: 120px 1fr 28px; align-items: center; gap: 10px; font-size: .76rem; color: var(--muted); } .fy-bars span { text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fy-bars i, .fy-dist i { display: block; height: 7px; border-radius: 99px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; } .fy-bars i::after { content: ''; display: block; height: 100%; width: var(--w); border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--cyan)); transform-origin: left; animation: fy-grow 1.1s cubic-bezier(.2, .8, .2, 1) .25s both; } .fy-bars b { font: 700 .72rem var(--mono); color: var(--text); text-align: right; }
+@keyframes fy-grow { from { transform: scaleX(0); } }
+.fy-gaps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 0; font-size: .78rem; } .fy-gaps span { color: var(--muted); } .fy-gaps em { font-style: normal; padding: 3px 10px; border: 1px dashed var(--warm); border-radius: var(--r-pill); color: var(--warm); }
+.fy-note { margin: 0; font-size: .8rem; color: var(--warm); }
+.fy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; } .fy-actions .btn { padding: 7px 14px; font-size: .85rem; } .fy-actions .btn.primary { margin-left: auto; }
+
+.fy-side { position: sticky; top: 84px; display: grid; gap: 14px; }
+.fy-panel { padding: 18px; border: 1px solid var(--home-line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); } .fy-panel h2 { margin: 0 0 10px; font-size: .95rem; letter-spacing: -.01em; }
+.fy-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; font-size: .78rem; color: var(--muted); } .fy-src span { padding: 3px 10px; border: 1px solid var(--home-line); border-radius: var(--r-pill); } .fy-src .on { color: var(--lime); border-color: color-mix(in srgb, var(--lime) 45%, transparent); }
+.fy-skills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; } .fy-skills span { padding: 3px 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); font-size: .76rem; } .fy-edit { color: var(--cyan); font-size: .85rem; text-decoration: none; }
+.fy-dist { display: grid; gap: 9px; } .fy-dist div { display: grid; grid-template-columns: 74px 1fr 26px; align-items: center; gap: 10px; font-size: .8rem; color: var(--muted); } .fy-dist.gaps div { grid-template-columns: 96px 1fr 22px; }
+.fy-dist u { display: block; height: 100%; width: var(--w); border-radius: inherit; text-decoration: none; background: linear-gradient(90deg, var(--cyan), var(--lime)); transform-origin: left; animation: fy-grow 1.1s cubic-bezier(.2, .8, .2, 1) .3s both; } .fy-dist b { color: var(--text); font: 700 .75rem var(--mono); text-align: right; }
+
+.fy-empty { display: grid; justify-items: center; gap: 8px; padding: 44px 20px; text-align: center; border: 1px dashed var(--home-line); border-radius: 26px; } .fy-empty h2 { margin: 6px 0 0; font-size: 1.5rem; } .fy-empty p { margin: 0 0 8px; color: var(--muted); max-width: 440px; }
+.fy-empty-art { position: relative; width: 96px; height: 96px; } .fy-empty-art i { position: absolute; inset: 0; margin: auto; border-radius: 50%; border: 2px solid var(--cyan); opacity: 0; animation: fy-ripple 2.6s infinite; } .fy-empty-art i:nth-child(2) { animation-delay: .8s; } .fy-empty-art i:nth-child(3) { animation-delay: 1.6s; }
+@keyframes fy-ripple { from { width: 14px; height: 14px; opacity: .9; } to { width: 96px; height: 96px; opacity: 0; } }
+@media (max-width: 960px) { .fy-tiles { grid-template-columns: 1fr 1fr; } .fy-tile.hero { grid-column: span 2; } .fy-layout { grid-template-columns: 1fr; } .fy-side { position: static; } }
+@media (max-width: 560px) { .fy-card { grid-template-columns: auto 1fr; } .fy-rank { display: none; } .fy-bars div { grid-template-columns: 90px 1fr 26px; } }
+@media (prefers-reduced-motion: reduce) { .fy-card, .fy-bars i::after, .fy-dist u, .fy-skel, .fy-empty-art i { animation: none; } }

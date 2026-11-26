@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import { useAuth } from './auth.jsx';
 import { useRealtime } from './realtime.jsx';
+import { Avatar } from './ui.jsx';
+import './chat.css';
 
 const timeOf = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 const dayOf = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 // A live conversation. History loads over REST; new messages arrive over the socket. Sending goes through the socket (instant
 // ack) and falls back to REST if the socket is down. Message text is rendered as plain text by React, never as HTML.
-export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
+export default function ChatPane({ roomId, empty = 'Say hello' }) {
   const { user } = useAuth();
   const { socket, connected, setActiveRoom, refresh } = useRealtime();
   const [msgs, setMsgs] = useState([]);
@@ -19,11 +21,14 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
   const [typing, setTyping] = useState('');
   const [sending, setSending] = useState(false);
   const box = useRef(null);
+  const ta = useRef(null);
   const stick = useRef(true);
   const lastTyping = useRef(0);
   const typingTimer = useRef(null);
 
-  const add = useCallback((m) => setMsgs((l) => (l.some((x) => x.id === m.id) ? l : [...l, m])), []);
+  const fresh = useRef(new Set()); // ids that arrived after the history loaded; only these animate in
+  const loadedRef = useRef(false);
+  const add = useCallback((m) => { if (loadedRef.current) fresh.current.add(m.id); setMsgs((l) => (l.some((x) => x.id === m.id) ? l : [...l, m])); }, []);
 
   // The room this pane currently shows, and the messages loaded for it (read synchronously by sync)
   const roomRef = useRef(roomId);
@@ -46,10 +51,11 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
       if (roomRef.current !== room) return;
       let unseen = false;
       setMsgs((l) => {
-        const fresh = got.filter((m, i) => !l.some((x) => x.id === m.id) && got.findIndex((y) => y.id === m.id) === i);
-        if (!fresh.length) return l;
-        unseen = fresh.some((m) => m.senderId !== user.id);
-        return [...l, ...fresh].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const added = got.filter((m, i) => !l.some((x) => x.id === m.id) && got.findIndex((y) => y.id === m.id) === i);
+        if (!added.length) return l;
+        if (loadedRef.current) added.forEach((m) => fresh.current.add(m.id));
+        unseen = added.some((m) => m.senderId !== user.id);
+        return [...l, ...added].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       });
       if (unseen) api.markRead(room).then(refresh).catch(() => {});
     } catch { /* offline or signed out; the next sync retries */ }
@@ -58,9 +64,9 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
   useEffect(() => {
     let live = true;
     roomRef.current = roomId; msgsRef.current = [];
-    setMsgs([]); setLoading(true); setError(''); setTyping(''); stick.current = true;
+    setMsgs([]); setLoading(true); setError(''); setTyping(''); stick.current = true; loadedRef.current = false; fresh.current = new Set();
     setActiveRoom(roomId);
-    api.roomMessages(roomId).then((r) => { if (!live) return; setMsgs(r.messages); setMore(r.messages.length >= 40); }).catch((e) => live && setError(e.message)).finally(() => live && setLoading(false));
+    api.roomMessages(roomId).then((r) => { if (!live) return; setMsgs(r.messages); setMore(r.messages.length >= 40); }).catch((e) => live && setError(e.message)).finally(() => { if (live) { setLoading(false); loadedRef.current = true; } });
     api.markRead(roomId).then(refresh).catch(() => {});
     return () => { live = false; setActiveRoom(null); };
   }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,6 +99,7 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
   }, [connected, sync]);
 
   useEffect(() => { const el = box.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [msgs, typing]);
+  useEffect(() => { if (!text && ta.current) ta.current.style.height = 'auto'; }, [text]);
   const onScroll = () => { const el = box.current; if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; };
 
   async function older() {
@@ -120,8 +127,9 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
     } catch (err) { setError(err.message); } finally { setSending(false); }
   }
 
-  function onChange(v) {
-    setText(v);
+  function grow(el) { if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 140)}px`; }
+  function onChange(v, el) {
+    setText(v); grow(el);
     if (socket && connected && Date.now() - lastTyping.current > 2500) { lastTyping.current = Date.now(); socket.emit('typing', { roomId, on: true }); }
   }
 
@@ -135,27 +143,32 @@ export default function ChatPane({ roomId, empty = 'Say hello 👋' }) {
         {msgs.map((m, i) => {
           const mine = m.senderId === user.id;
           const d = dayOf(m.createdAt); const showDay = d !== lastDay; lastDay = d;
-          const showName = !mine && (i === 0 || msgs[i - 1].senderId !== m.senderId || showDay);
+          const first = i === 0 || msgs[i - 1].senderId !== m.senderId || showDay;
+          const last = i === msgs.length - 1 || msgs[i + 1].senderId !== m.senderId || dayOf(msgs[i + 1].createdAt) !== d;
           return (
-            <div key={m.id}>
-              {showDay && <p className="day small muted">{d}</p>}
-              <div className={`msg ${mine ? 'mine' : ''}`}>
-                {showName && <span className="who small">{m.senderName || 'Member'}</span>}
-                <p>{m.text}</p>
-                <span className="when">{timeOf(m.createdAt)}</span>
+            <div key={m.id} className={`grp ${mine ? 'mine' : ''} ${first ? 'first' : ''} ${last ? 'last' : ''}`}>
+              {showDay && <p className="day"><span>{d}</span></p>}
+              <div className="line">
+                {!mine && <span className="gut">{last ? <Avatar name={m.senderName || 'Member'} size={30} /> : null}</span>}
+                <div className={`msg ${mine ? 'mine' : ''} ${fresh.current.has(m.id) ? 'fresh' : ''}`}>
+                  {!mine && first && <span className="who small">{m.senderName || 'Member'}</span>}
+                  <p>{m.text}</p>
+                  <span className="when">{timeOf(m.createdAt)}</span>
+                </div>
               </div>
             </div>
           );
         })}
-        {typing && <p className="small muted typing">{typing}</p>}
+        {typing && <p className="typing" role="status"><span className="dots"><i /><i /><i /></span> {typing}</p>}
       </div>
       {error && <p className="error small pad-x" role="alert">{error}</p>}
       <form className="composer" onSubmit={send}>
         <textarea
-          value={text} rows={1} maxLength={2000} placeholder={connected ? 'Write a message…' : 'Write a message (reconnecting, will send normally)…'} aria-label="Message"
-          onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          ref={ta} value={text} rows={1} maxLength={2000} placeholder={connected ? 'Write a message…' : 'Write a message (reconnecting, will send normally)…'} aria-label="Message"
+          onChange={(e) => onChange(e.target.value, e.target)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
-        <button className="btn primary" disabled={!text.trim() || sending}>Send</button>
+        {text.length > 1700 && <span className="count">{2000 - text.length}</span>}
+        <button className="send" disabled={!text.trim() || sending} aria-label="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4 18-7Z" /></svg></button>
       </form>
     </div>
   );

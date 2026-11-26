@@ -38,7 +38,7 @@ function map(kind, d) {
     mode: region === 'online' ? 'ONLINE' : region === 'hybrid' ? 'HYBRID' : 'OFFLINE',
     city: addr.city || '',
     state: addr.state || '',
-    country: addr.country || '',
+    country: typeof addr.country === 'string' ? addr.country : (addr.country && addr.country.name) || '', // some records send an object
     prizeLabel: prize?.label, prizeInr: prize?.inr, prizeAmount: prize?.amount, prizeCurrency: prize?.currency,
     fee: d.isPaid ? 'Paid' : 'Free',
     eligibility: filters.map((f) => f.name || f.filter_name || f.title).filter(Boolean).slice(0, 6),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Icon } from '../ui.jsx';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -139,9 +140,9 @@ export default function TeamPage() {
         </div>
 
         <section className="panel teamchat" aria-label="Team room">
-          <h2>🔒 Team room</h2>
+          <h2><Icon name="lock" /> Team room</h2>
           <p className="small muted">Only team members can read this.</p>
-          {team.room && <ChatPane roomId={team.room} empty="This is your team’s private room. Say hello 👋" />}
+          {team.room && <ChatPane roomId={team.room} empty="This is your team’s private room. Say hello" />}
         </section>
       </div>
     </>

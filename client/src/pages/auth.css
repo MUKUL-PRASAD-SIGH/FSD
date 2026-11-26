@@ -1,0 +1,11 @@
+/* Authentication: split screen with a brand panel and the form. Prefix: au- */
+.au { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: min(640px, calc(100vh - 150px)); margin-top: 8px; border: 1px solid var(--home-line); border-radius: 32px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+.au-brand { position: relative; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 36px 28px; text-align: center; background: radial-gradient(70% 60% at 50% 25%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 70%), radial-gradient(50% 40% at 90% 100%, color-mix(in srgb, var(--lime) 18%, transparent), transparent 70%), linear-gradient(180deg, #0B1A3F, var(--bg)); overflow: hidden; }
+.au-brand::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 59px, rgb(255 255 255 / .035) 59px 60px); mask-image: linear-gradient(transparent, #000 40%, transparent); }
+.au-brand > * { position: relative; }
+.au-brand h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1.05; letter-spacing: -.05em; color: #fff; } .au-brand h2 span { color: var(--lime); }
+.au-brand ul { display: grid; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; text-align: left; } .au-brand li { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border: 1px solid rgb(255 255 255 / .12); border-radius: var(--r-pill); background: rgb(8 11 16 / .45); backdrop-filter: blur(8px); color: #cdd7e6; font-size: .86rem; animation: au-in .6s cubic-bezier(.2, .8, .2, 1) both; } .au-brand li:nth-child(2) { animation-delay: .12s; } .au-brand li:nth-child(3) { animation-delay: .24s; } .au-brand li b { min-width: 46px; color: var(--lime); font-family: var(--mono); }
+@keyframes au-in { from { opacity: 0; transform: translateX(-14px); } }
+.au .auth-wrap { place-items: center; padding: 28px 24px; } .au .auth-card { width: min(420px, 100%); border: 0; background: none; box-shadow: none; padding: 0; } .au .auth-card h1 { font-size: 1.9rem; letter-spacing: -.045em; }
+@media (max-width: 860px) { .au { grid-template-columns: 1fr; } .au-brand { padding: 22px; } .au-brand .emb { --s: 150px !important; } .au-brand ul { display: none; } }
+@media (prefers-reduced-motion: reduce) { .au-brand li { animation: none; } }

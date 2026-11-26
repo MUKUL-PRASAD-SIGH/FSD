@@ -1,0 +1,84 @@
+/* =====================================================================
+   HackElite v4 "Neon Opportunity" theme. Loaded last: restyles shared pieces through the tokens in
+   styles.css / layer.css (--bg --panel --line --text --muted --accent --cyan --lime).
+   Extra tokens: radii, spacing scale, glow and surfaces.
+   ===================================================================== */
+:root {
+  --r-sm: 10px; --r-md: 16px; --r-lg: 24px; --r-pill: 999px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 40px;
+  --glow-blue: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 10px 40px -12px color-mix(in srgb, var(--accent) 55%, transparent);
+  --glow-lime: 0 6px 28px -6px color-mix(in srgb, var(--lime) 60%, transparent);
+  --surface: linear-gradient(160deg, color-mix(in srgb, var(--panel2) 88%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+  --home-line: color-mix(in srgb, var(--accent) 22%, var(--line));
+  --radius: var(--r-md);
+  --shadow: 0 1px 0 rgb(255 255 255 / .03) inset, 0 12px 40px -18px rgb(0 0 0 / .8);
+}
+:root[data-theme='light'] { --shadow: 0 1px 2px rgb(10 21 38 / .06), 0 12px 32px -16px rgb(23 105 224 / .25); }
+
+body {
+  background:
+    radial-gradient(900px 520px at 92% -8%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 62%),
+    radial-gradient(760px 460px at -8% 4%, color-mix(in srgb, var(--cyan) 14%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 50% 112%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+::selection { background: color-mix(in srgb, var(--lime) 35%, transparent); }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ---- navigation ---- */
+.top { border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); gap: 14px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.25rem var(--sans); letter-spacing: -.02em; text-transform: none; background: none; color: var(--text); -webkit-text-fill-color: currentColor; }
+.brand span { color: var(--lime); -webkit-text-fill-color: var(--lime); }
+.brand svg { width: 32px; height: 32px; flex: none; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
+.top nav { gap: 6px; }
+.top nav a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border: 1px solid transparent; border-radius: var(--r-pill); color: var(--muted); }
+.top nav a:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.top nav a.active { color: var(--text); border-color: color-mix(in srgb, var(--lime) 70%, transparent); background: color-mix(in srgb, var(--lime) 10%, transparent); box-shadow: 0 0 20px -8px var(--lime); }
+.top-right { gap: 10px; }
+.top-right .btn.ghost, .top-right .btn.icon { border-radius: var(--r-pill); background: color-mix(in srgb, var(--panel2) 80%, transparent); border-color: var(--home-line); }
+.pro-pill { color: var(--text); gap: 7px; } .pro-pill svg { width: 18px; height: 18px; color: var(--lime); }
+.avatar-btn { width: 40px; height: 40px; padding: 0 !important; font-weight: 700; }
+.badge { background: var(--lime); color: var(--lime-ink); font-weight: 700; }
+.banner { display: flex; align-items: center; justify-content: center; gap: 10px; max-width: 1120px; margin: 10px auto 0; border: 1px solid var(--home-line); border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); color: var(--text); }
+.banner::before { content: 'i'; display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 .75rem var(--sans); }
+.banner .banner-x { margin-left: auto; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+
+/* ---- buttons ---- */
+.btn { border-radius: var(--r-pill); background: color-mix(in srgb, var(--panel2) 85%, transparent); border-color: var(--home-line); }
+.btn:hover:not(:disabled) { border-color: var(--cyan); box-shadow: 0 0 22px -10px var(--cyan); }
+.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--lime) 92%, #fff), var(--lime)); color: var(--lime-ink); border-color: transparent; font-weight: 700; box-shadow: var(--glow-lime); }
+.btn.primary:hover:not(:disabled) { box-shadow: 0 8px 34px -4px color-mix(in srgb, var(--lime) 75%, transparent); border-color: transparent; }
+.link, .landing-text-link { color: var(--cyan); }
+
+/* ---- surfaces ---- */
+.card, .panel, .col, .auth-card, .modal, .facts div, .stats div, .plan, .bubble, .drop, .tbl-wrap {
+  background: var(--surface); border-color: var(--home-line); box-shadow: var(--shadow);
+}
+.card { transition: border-color .2s, box-shadow .2s, transform .2s; }
+.card:hover, .journey-card:hover { border-color: color-mix(in srgb, var(--cyan) 65%, var(--line)); box-shadow: var(--glow-blue); transform: translateY(-2px); }
+.mini, .pill { background: color-mix(in srgb, var(--accent) 8%, var(--panel2)); border-color: var(--home-line); }
+.pill.okp { color: var(--lime); border-color: color-mix(in srgb, var(--lime) 55%, transparent); }
+.score { color: var(--cyan); } .score.hi { color: var(--lime); } .score.mid { color: var(--cyan); }
+.bar i::after { background: linear-gradient(90deg, var(--accent), var(--cyan)); }
+.plan.current { border-color: var(--lime); box-shadow: var(--glow-lime); }
+
+/* ---- controls ---- */
+input, select, textarea { background: color-mix(in srgb, var(--panel) 90%, transparent); border-color: var(--home-line); border-radius: var(--r-sm); }
+input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 22%, transparent); }
+.chip { border-radius: var(--r-pill); border-color: var(--home-line); background: color-mix(in srgb, var(--panel2) 80%, transparent); transition: border-color .15s, background .15s; }
+.chip:hover { border-color: var(--cyan); }
+.chip.on, .seg button.on { background: var(--lime); color: var(--lime-ink); border-color: var(--lime); font-weight: 700; }
+.seg { background: var(--panel2); border: 1px solid var(--home-line); border-radius: var(--r-pill); } .seg button { border-radius: var(--r-pill); }
+.skeleton i { background: linear-gradient(90deg, var(--panel2), color-mix(in srgb, var(--accent) 22%, var(--line)), var(--panel2)); background-size: 200% 100%; }
+
+/* ---- chat bubbles (assistant + live chat) ---- */
+.bubble.user, .msg.mine { background: linear-gradient(135deg, #145BFF, #0B3FC4); color: #fff; border-color: transparent; }
+.msg .who { color: var(--cyan); }
+
+/* ---- nav fit: one row at 1280px ---- */
+.top { padding-left: max(16px, calc((100vw - 1280px) / 2)); padding-right: max(16px, calc((100vw - 1280px) / 2)); }
+.brand b { font-weight: inherit; } .brand b span { color: var(--lime); -webkit-text-fill-color: var(--lime); } .brand > span { color: inherit; }
+.top nav { gap: 2px; flex-wrap: nowrap; } .top nav a { padding: 8px 12px; font-size: .92rem; white-space: nowrap; }
+@media (max-width: 1100px) { .top nav { flex-wrap: wrap; } }
+.mini-actions { flex-wrap: wrap; gap: 6px 10px; } .mini-actions .link { white-space: nowrap; }
