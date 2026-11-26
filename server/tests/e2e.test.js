@@ -1,6 +1,7 @@
 // End-to-end test: boots the real Express app against a REAL MongoDB in an isolated database
 // (hackelite_e2e_test, dropped afterwards) and drives it over HTTP exactly like the browser does.
 process.env.NODE_ENV = 'test';
+process.env.PLANS_ENABLED = 'true'; // these suites check the Free/Pro rules, which stay in the code for when plans come back
 process.env.MONGO_DB_NAME = 'hackelite_e2e_test';
 process.env.JWT_SECRET = process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 ? process.env.JWT_SECRET : 'e2e-test-secret-e2e-test-secret-0123456789';
 process.env.ADMIN_EMAIL = 'admin-e2e@example.com';
@@ -175,13 +176,23 @@ test('Google sign-in: not configured, then verified-token flow with account link
     // password login is refused with a helpful code for Google-only accounts
     const pw = await login('gina@gmail.test');
     assert.equal(pw.status, 401); assert.equal(pw.body.code, 'USE_GOOGLE');
-    // existing password account gets linked, not duplicated
-    await register({ email: 'linkme@gmail.test' });
+    // existing password account gets linked, not duplicated. It was never verified, so its password may have been chosen
+    // by someone who registered the address first (pre-hijacking): linking removes that password and ends its sessions.
+    const squatter = await register({ email: 'linkme@gmail.test' });
     const linked = await call('POST', '/api/auth/google', { body: { credential: 'linkme' } });
     assert.equal(linked.status, 200);
     assert.equal(await User.countDocuments({ email: 'linkme@gmail.test' }), 1);
     assert.equal(linked.body.user.googleLinked, true);
-    assert.equal(linked.body.user.hasPassword, true);
+    assert.equal(linked.body.user.hasPassword, false, 'unproven password removed on Google link');
+    assert.equal((await login('linkme@gmail.test')).status, 401);
+    assert.equal((await call('GET', '/api/auth/me', { token: squatter.body.token })).status, 401, 'earlier sessions revoked');
+    // an account whose email WAS verified keeps its password when Google is linked
+    await register({ email: 'verified@gmail.test' });
+    await User.updateOne({ email: 'verified@gmail.test' }, { $set: { emailVerified: true } });
+    const kept = await call('POST', '/api/auth/google', { body: { credential: 'verified' } });
+    assert.equal(kept.body.user.googleLinked, true);
+    assert.equal(kept.body.user.hasPassword, true, 'verified owner keeps the password');
+    assert.equal((await login('verified@gmail.test')).status, 200);
     // Google-only account can set a first password, then use it
     const setPw = await call('POST', '/api/auth/change-password', { token: first.body.token, body: { password: PW } });
     assert.equal(setPw.status, 200);

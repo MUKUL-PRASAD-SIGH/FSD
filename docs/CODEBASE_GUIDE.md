@@ -130,7 +130,7 @@ On start (`start()` in `server/server.js`): validate env → connect MongoDB →
 │   ├── config/                  env.js (validated config) · db.js
 │   ├── middleware/              auth.js · security.js · ops.js
 │   ├── models/                  Mongoose schemas (16)
-│   ├── routes/                  HTTP layer (13 files, 105 routes)
+│   ├── routes/                  HTTP layer (16 files, 123 routes)
 │   ├── services/                business logic (+ ingest/ with 14 adapter files)
 │   ├── utils/                   safeFetch · pii · geo · password · breached · sanitize · serialize · http · listingInput · seed
 │   ├── scripts/                 dev-db.js · e2e-live.js · source-check.js · check-integrations.js
@@ -427,7 +427,7 @@ Each chapter has: **What the user sees → How it works (high level) → Where t
 ## 3.15 Quality, testing and operations
 | Path | Role |
 |---|---|
-| `server/tests/*.test.js` | 13 files, 114 reported tests (see [TESTING.md](TESTING.md)) |
+| `server/tests/*.test.js` | 16 files, 137 reported tests (see [TESTING.md](TESTING.md)) |
 | `server/tests/helpers/journey.js` | the 11-phase, 41-check product journey, shared by both runners |
 | `server/scripts/e2e-live.js` | boots the **real server process** with an isolated database and runs the journey (`npm run e2e`) |
 | `server/scripts/dev-db.js` | zero-install persistent MongoDB for development |
@@ -479,7 +479,7 @@ Each chapter has: **What the user sees → How it works (high level) → Where t
 17. **Is the live chat scalable?** One instance today. The room naming is stable, so adding the Socket.IO Redis adapter scales it out; documented.
 
 **Quality**
-18. **How do you know it works?** 114 automated tests against a real MongoDB with real WebSocket clients, plus a 41-check product journey that also runs against a separately started server process (`npm run e2e`), CI on every push, and a clean `npm audit`.
+18. **How do you know it works?** 137 automated tests against a real MongoDB with real WebSocket clients, plus a 41-check product journey that also runs against a separately started server process (`npm run e2e`), CI on every push, and a clean `npm audit`.
 19. **Give an example of a bug the tests caught.** The live run found that a valid PDF upload returned 500 in the real server: Node hands multer a *view* into a shared network buffer and pdf.js mis-read it. The fix copies the bytes; a regression test now covers it.
 20. **What would you do next?** Payments instead of activation keys; chat moderation (report, delete); headless-browser crawling for JavaScript-only event pages; Redis for multi-instance scale; a licence choice and a privacy policy page.
 

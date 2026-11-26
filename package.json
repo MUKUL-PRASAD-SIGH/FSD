@@ -18,6 +18,7 @@
 
     "test": "npm --prefix server test",
     "e2e": "npm --prefix server run e2e",
+    "secrets": "node scripts/secret-scan.js",
     "audit": "npm --prefix server audit --omit=dev --audit-level=high && npm --prefix client audit --omit=dev --audit-level=high",
     "verify": "npm run test && npm run build && npm run e2e",
 

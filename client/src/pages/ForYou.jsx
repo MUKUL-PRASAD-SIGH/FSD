@@ -109,7 +109,7 @@ export default function ForYou() {
     <div className="fy">
       <div className="fy-hero">
         <div><p className="fy-kicker">Personalised intelligence</p><h1>For you</h1></div>
-        <span className={`fy-tier ${pro ? 'pro' : ''}`}>{pro ? '✦ Pro rubric' : 'Basic picks'}</span>
+        <span className={`fy-tier ${pro ? 'pro' : ''}`}>{pro ? '✦ Personalised ranking' : 'Basic picks'}</span>
       </div>
 
       {data.hasSignal && (

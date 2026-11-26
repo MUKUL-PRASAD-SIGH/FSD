@@ -18,7 +18,9 @@ const keyIsValid = (candidate) => config.proKeys.reduce((ok, k) => crypto.timing
 
 router.use(protect);
 
-router.get('/', (req, res) => res.json({ tier: req.user.plan?.tier || 'free', since: req.user.plan?.since, features: FEATURES }));
+router.get('/', (req, res) => res.json({ tier: req.user.plan?.tier || 'free', since: req.user.plan?.since, features: FEATURES, plansEnabled: config.plansEnabled, unlocked: req.user.isPro() }));
+// While paid plans are switched off there is nothing to buy or cancel
+router.use((req, res, next) => (config.plansEnabled ? next() : res.status(409).json({ error: 'Every feature is free right now, so there is no plan to change.', code: 'PLANS_DISABLED' })));
 
 router.post('/activate', authLimiter, asyncRoute(async (req, res) => {
   const key = typeof req.body?.key === 'string' ? req.body.key.trim().slice(0, 200) : '';

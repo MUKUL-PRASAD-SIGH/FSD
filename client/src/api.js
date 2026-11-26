@@ -29,6 +29,7 @@ async function request(path, { method = 'GET', body, form, auth = true } = {}) {
 const j = (method, path, body) => request(path, { method, body });
 
 export const api = {
+  health: () => request('/health', { auth: false }),
   config: () => request('/auth/config', { auth: false }),
   register: (b) => j('POST', '/auth/register', b),
   login: (b) => j('POST', '/auth/login', b),
@@ -142,4 +143,24 @@ export const api = {
   adminSourceHistory: (s) => request(`/admin/sources/${encodeURIComponent(s)}/history`),
   runIngest: (sources) => j('POST', '/admin/ingest/run', { sources }),
   adminIntegrations: () => request('/admin/integrations'),
+  adminAnalytics: (days = 30) => request(`/admin/analytics?days=${days}`),
+  adminBreakdowns: (days = 30) => request(`/admin/analytics/breakdowns?days=${days}`),
+  adminAssistant: (question, history = []) => j('POST', '/admin/assistant', { question, history }),
+
+  adminReview: () => request('/admin/review'),
+  reviewListingOk: (id) => j('POST', `/admin/review/listings/${id}/ok`),
+  reviewReport: (id, action) => j('POST', `/admin/review/reports/${id}`, { action }),
+  patchCollege: (id, body) => j('PATCH', `/admin/colleges/${id}`, body),
+  adminColleges: (q = '') => request(`/admin/colleges?q=${encodeURIComponent(q)}`),
+
+  colleges: (q = '') => request(`/colleges?q=${encodeURIComponent(q)}&limit=10`, { auth: false }),
+  onboarding: () => request('/me/onboarding'),
+  phoneStart: (phone, channel) => j('POST', '/me/phone/start', { phone, channel }),
+  phoneVerify: (code) => j('POST', '/me/phone/verify', { code }),
+  phoneRemove: () => request('/me/phone', { method: 'DELETE' }),
+  reportListing: (id, reason, note = '') => j('POST', `/listings/${id}/report`, { reason, note }),
+
+  // analytics intake (write-only)
+  track: (event) => request('/track', { method: 'POST', body: event }),
+  heartbeat: (seconds) => request('/track/heartbeat', { method: 'POST', body: { seconds } }),
 };

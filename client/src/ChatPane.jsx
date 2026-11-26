@@ -30,8 +30,40 @@ export default function ChatPane({ roomId, empty = 'Say hello' }) {
   const loadedRef = useRef(false);
   const add = useCallback((m) => { if (loadedRef.current) fresh.current.add(m.id); setMsgs((l) => (l.some((x) => x.id === m.id) ? l : [...l, m])); }, []);
 
+  // The room this pane currently shows, and the messages loaded for it (read synchronously by sync)
+  const roomRef = useRef(roomId);
+  const msgsRef = useRef([]);
+  useEffect(() => { msgsRef.current = msgs; }, [msgs]);
+
+  // Catch up on anything the socket missed (it was down, the tab slept, the network blipped): fetch the latest page, and
+  // keep paging back until it overlaps what is already loaded (so a long gap is filled completely), then merge.
+  // A response that arrives after the user switched rooms is dropped.
+  const sync = useCallback(async () => {
+    const room = roomId;
+    try {
+      const known = new Set(msgsRef.current.map((m) => m.id));
+      let page = await api.roomMessages(room);
+      const got = [...page.messages];
+      for (let i = 0; i < 5 && known.size && page.messages.length >= 40 && !page.messages.some((m) => known.has(m.id)); i++) {
+        page = await api.roomMessages(room, page.messages[0].createdAt);
+        got.unshift(...page.messages);
+      }
+      if (roomRef.current !== room) return;
+      let unseen = false;
+      setMsgs((l) => {
+        const added = got.filter((m, i) => !l.some((x) => x.id === m.id) && got.findIndex((y) => y.id === m.id) === i);
+        if (!added.length) return l;
+        if (loadedRef.current) added.forEach((m) => fresh.current.add(m.id));
+        unseen = added.some((m) => m.senderId !== user.id);
+        return [...l, ...added].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+      if (unseen) api.markRead(room).then(refresh).catch(() => {});
+    } catch { /* offline or signed out; the next sync retries */ }
+  }, [roomId, user.id, refresh]);
+
   useEffect(() => {
     let live = true;
+    roomRef.current = roomId; msgsRef.current = [];
     setMsgs([]); setLoading(true); setError(''); setTyping(''); stick.current = true; loadedRef.current = false; fresh.current = new Set();
     setActiveRoom(roomId);
     api.roomMessages(roomId).then((r) => { if (!live) return; setMsgs(r.messages); setMore(r.messages.length >= 40); }).catch((e) => live && setError(e.message)).finally(() => { if (live) { setLoading(false); loadedRef.current = true; } });
@@ -50,6 +82,21 @@ export default function ChatPane({ roomId, empty = 'Say hello' }) {
     socket.on('message:new', onMsg); socket.on('typing', onTyping);
     return () => { socket.off('message:new', onMsg); socket.off('typing', onTyping); clearTimeout(typingTimer.current); };
   }, [socket, roomId, user.id, add, refresh]);
+
+  // Re-sync whenever the live channel (re)connects or the tab comes back into view, and keep a safety poll running:
+  // fast while the socket is down, slow while it is up (it only guards against a silently dead connection).
+  useEffect(() => {
+    if (!connected) return undefined;
+    sync();
+    return undefined;
+  }, [connected, sync]);
+  useEffect(() => {
+    const t = setInterval(sync, connected ? 15000 : 3000);
+    const onVisible = () => { if (document.visibilityState === 'visible') sync(); };
+    window.addEventListener('focus', onVisible); window.addEventListener('online', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(t); window.removeEventListener('focus', onVisible); window.removeEventListener('online', onVisible); document.removeEventListener('visibilitychange', onVisible); };
+  }, [connected, sync]);
 
   useEffect(() => { const el = box.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [msgs, typing]);
   useEffect(() => { if (!text && ta.current) ta.current.style.height = 'auto'; }, [text]);

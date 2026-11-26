@@ -4,14 +4,15 @@ const { extractSkills } = require('./skills');
 async function extractText(buffer, fileName) {
   const ext = path.extname(fileName || '').toLowerCase();
   if (ext === '.pdf') {
-    const pdf = require('pdf-parse');
+    const { PDFParse } = require('pdf-parse');
     // An uploaded Buffer is often a VIEW into a larger shared network buffer (byteOffset > 0, e.g. a slice of a 64 KB socket read).
     // pdf.js then misreads it ("bad XRef entry") depending on how TCP happened to chunk the upload: a valid PDF would sometimes 500.
     // Always hand it a standalone copy, and report unreadable files as a clean 400 instead of leaking a library error.
-    try { return (await pdf(new Uint8Array(buffer))).text; } catch (e) {
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try { return (await parser.getText()).text; } catch (e) {
       console.warn('resume: PDF could not be parsed:', e.message);
       throw Object.assign(new Error('We could not read that PDF. Try exporting it again, or upload a DOCX or TXT file.'), { status: 400 });
-    }
+    } finally { await parser.destroy().catch(() => {}); }
   }
   if (ext === '.docx') {
     const mammoth = require('mammoth');

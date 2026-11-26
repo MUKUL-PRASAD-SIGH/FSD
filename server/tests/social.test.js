@@ -1,5 +1,6 @@
 // Network, chat, teams, invites, reminders: real HTTP + real Socket.IO clients against a real MongoDB.
 process.env.NODE_ENV = 'test';
+process.env.PLANS_ENABLED = 'true'; // these suites check the Free/Pro rules, which stay in the code for when plans come back
 process.env.MONGO_DB_NAME = 'hackelite_social_test';
 process.env.JWT_SECRET = process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32 ? process.env.JWT_SECRET : 'social-test-secret-social-test-secret-0123456789';
 process.env.ADMIN_EMAIL = ''; process.env.ADMIN_PASSWORD = '';

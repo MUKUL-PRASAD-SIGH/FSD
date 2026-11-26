@@ -21,6 +21,7 @@ const feedLimiter = limiter(60 * 1000, 3000, 'Calendar feed is being requested t
 const authLimiter = limiter(15 * 60 * 1000, 30, 'Too many sign-in attempts. Try again in a few minutes.');
 const heavyLimiter = limiter(60 * 1000, 20, 'Too many requests to this feature. Wait a minute.');
 const messageLimiter = limiter(60 * 1000, 120, 'You are sending messages too fast. Slow down a little.');
+const trackLimiter = limiter(60 * 1000, 120, 'Too many analytics events.');
 
 function applySecurity(app) {
   app.disable('x-powered-by');
@@ -44,4 +45,4 @@ function applySecurity(app) {
   app.use(globalLimiter);
 }
 
-module.exports = { applySecurity, authLimiter, heavyLimiter, feedLimiter, messageLimiter };
+module.exports = { applySecurity, authLimiter, heavyLimiter, feedLimiter, messageLimiter, trackLimiter };

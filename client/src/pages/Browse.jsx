@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
+import { track } from '../analytics.js';
 import { useAuth } from '../auth.jsx';
 import { Details, KIND, closes, prizeText, useListingActions } from '../components.jsx';
 import { CountUp } from '../ui.jsx';
@@ -94,6 +95,13 @@ export default function Browse() {
   const [thumb, setThumb] = useState({ x: 0, w: 0 });
 
   useEffect(() => { api.stats().then(setStats).catch(() => {}); api.listings({ sort: 'deadline', closing: 'week', limit: 8 }).then((r) => setSoon(r.listings)).catch(() => {}); }, []);
+  // Record what people search for once they stop typing (not every keystroke)
+  useEffect(() => {
+    const q = f.q.trim();
+    if (q.length < 2) return undefined;
+    const t = setTimeout(() => track('search', { query: q }), 1500);
+    return () => clearTimeout(t);
+  }, [f.q]);
   useEffect(() => {
     if (!user) { setSavedIds(new Set()); return; }
     api.saved().then((r) => setSavedIds(new Set(r.saved.map((s) => s.listing.id)))).catch(() => {});

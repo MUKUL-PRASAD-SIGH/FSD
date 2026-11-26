@@ -163,4 +163,104 @@ router.get('/integrations', asyncRoute(async (_req, res) => {
 
 router.post('/notifier/run', asyncRoute(async (_req, res) => res.json({ created: await runNotifier() })));
 
+// ---- Review queue: confusing listings, user reports, user-added colleges ------------------------------------------------
+const ListingReport = require('../models/ListingReport');
+const College = require('../models/College');
+const quality = require('../services/listingQuality');
+const collegeSvc = require('../services/colleges');
+
+router.get('/review', asyncRoute(async (_req, res) => {
+  const now = new Date();
+  const [listings, reports, colleges] = await Promise.all([
+    Listing.find({ status: 'published', deadline: { $gte: now }, 'quality.score': { $gte: 2 }, 'quality.reviewedAt': null })
+      .sort({ 'quality.score': -1, deadline: 1 }).limit(50).select('title platform source url deadline quality').lean(),
+    ListingReport.find({ status: 'open' }).sort({ createdAt: -1 }).limit(50).populate('listing', 'title platform url status').populate('user', 'name email').lean(),
+    College.find({ source: 'user', reviewed: false }).sort({ createdAt: -1 }).limit(100).populate('addedBy', 'name email').lean(),
+  ]);
+  res.json({
+    listings: listings.map((l) => ({ id: l._id, title: l.title, platform: l.platform, url: l.url, deadline: l.deadline, score: l.quality.score, reports: l.quality.reports || 0, issues: quality.adminNotes(l.quality.issues) })),
+    reports: reports.map((r) => ({ id: r._id, reason: r.reason, note: r.note, at: r.createdAt, listing: r.listing && { id: r.listing._id, title: r.listing.title, platform: r.listing.platform, url: r.listing.url, status: r.listing.status }, by: r.user && { name: r.user.name, email: r.user.email } })),
+    colleges: colleges.map((c) => ({ id: c._id, name: c.name, city: c.city, users: c.users, at: c.createdAt, by: c.addedBy && { name: c.addedBy.name, email: c.addedBy.email } })),
+    counts: {
+      listings: await Listing.countDocuments({ status: 'published', deadline: { $gte: now }, 'quality.score': { $gte: 2 }, 'quality.reviewedAt': null }),
+      reports: await ListingReport.countDocuments({ status: 'open' }),
+      colleges: await College.countDocuments({ source: 'user', reviewed: false }),
+    },
+  });
+}));
+
+// Leave a flagged listing as it is (stops it showing in the queue until it changes)
+router.post('/review/listings/:id/ok', asyncRoute(async (req, res) => {
+  const r = await Listing.updateOne({ _id: req.params.id }, { $set: { 'quality.reviewedAt': new Date() } }).catch(() => null);
+  if (!r?.matchedCount) return res.status(404).json({ error: 'Listing not found' });
+  audit(req, 'admin.listing_reviewed', { target: req.params.id });
+  res.json({ ok: true });
+}));
+
+router.post('/review/reports/:id', asyncRoute(async (req, res) => {
+  const action = req.body?.action;
+  if (!['resolve', 'dismiss'].includes(action)) return res.status(400).json({ error: 'action must be resolve or dismiss' });
+  const r = await ListingReport.findOneAndUpdate({ _id: req.params.id, status: 'open' }, { $set: { status: action === 'resolve' ? 'resolved' : 'dismissed', resolvedBy: req.user._id, resolvedAt: new Date() } }, { new: true }).catch(() => null);
+  if (!r) return res.status(404).json({ error: 'Open report not found' });
+  const open = await ListingReport.countDocuments({ listing: r.listing, status: 'open' });
+  await Listing.updateOne({ _id: r.listing }, { $set: { 'quality.reports': open } });
+  await quality.recheck(r.listing);
+  audit(req, `admin.report_${action}`, { target: r._id, meta: { listing: String(r.listing) } });
+  res.json({ ok: true });
+}));
+
+// Approve, rename, merge into another college, or hide a user-added college
+router.patch('/colleges/:id', asyncRoute(async (req, res) => {
+  const c = await College.findById(req.params.id).catch(() => null);
+  if (!c) return res.status(404).json({ error: 'College not found' });
+  const b = req.body || {};
+  const prev = c.name;
+  if (b.action === 'approve') { c.reviewed = true; c.hidden = false; }
+  else if (b.action === 'hide') { c.reviewed = true; c.hidden = true; }
+  else if (b.action === 'rename') {
+    const name = collegeSvc.clean(b.name); const bad = collegeSvc.validName(name);
+    if (bad) return res.status(400).json({ error: bad });
+    const clash = await College.findOne({ key: collegeSvc.key(name), _id: { $ne: c._id } });
+    if (clash) return res.status(409).json({ error: `“${clash.name}” already exists. Merge into it instead.` });
+    c.name = name; c.key = collegeSvc.key(name); c.reviewed = true;
+    await c.save(); // save the directory first, so a failure can never leave profiles pointing at a name that doesn't exist
+    await User.updateMany({ college: prev }, { $set: { college: name } });
+  } else if (b.action === 'merge') {
+    const into = await College.findById(b.into).catch(() => null);
+    if (!into || String(into._id) === String(c._id)) return res.status(400).json({ error: 'Pick the college to merge into' });
+    const moved = await User.updateMany({ college: prev }, { $set: { college: into.name } });
+    await College.updateOne({ _id: into._id }, { $inc: { users: moved.modifiedCount || 0 }, $addToSet: { aliases: prev, aliasKeys: c.key } });
+    await c.deleteOne();
+    audit(req, 'admin.college_merge', { target: into._id, meta: { from: prev, into: into.name } });
+    return res.json({ ok: true, merged: into.name });
+  } else return res.status(400).json({ error: 'action must be approve, rename, merge or hide' });
+  await c.save();
+  audit(req, `admin.college_${b.action}`, { target: c._id, meta: { from: prev, name: c.name } });
+  res.json({ ok: true, college: { id: c._id, name: c.name, hidden: c.hidden } });
+}));
+
+router.get('/colleges', asyncRoute(async (req, res) => res.json({ colleges: await collegeSvc.search(req.query.q, { limit: 30 }) })));
+
+// ---- Analytics + admin AI (admin only, like everything in this router) ------------------------------------------------
+const analytics = require('../services/analytics');
+const adminAssistant = require('../services/adminAssistant');
+const { heavyLimiter } = require('../middleware/security');
+
+router.get('/analytics', asyncRoute(async (req, res) => res.json(await analytics.dashboard({ days: req.query.days }))));
+router.get('/analytics/breakdowns', asyncRoute(async (req, res) => {
+  const [users, listings, chat] = await Promise.all([analytics.userBreakdown(), analytics.listingBreakdown({ days: req.query.days }), analytics.chatActivity({ days: req.query.days })]);
+  res.json({ users, listings, chat });
+}));
+router.get('/analytics/users/:q', asyncRoute(async (req, res) => res.json(await analytics.userLookup({ q: req.params.q, days: req.query.days }))));
+
+router.post('/assistant', heavyLimiter, asyncRoute(async (req, res) => {
+  const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
+  if (question.length < 3 || question.length > 500) return res.status(400).json({ error: 'Ask a question between 3 and 500 characters' });
+  const history = (Array.isArray(req.body?.history) ? req.body.history : [])
+    .slice(-6).filter((h) => h && ['user', 'assistant'].includes(h.role) && typeof h.text === 'string').map((h) => ({ role: h.role, text: h.text.slice(0, 500) }));
+  const out = await adminAssistant.answer(question, history);
+  audit(req, 'admin.assistant', { meta: { question: question.slice(0, 200), tools: out.tools.map((t) => t.tool) } });
+  res.json(out);
+}));
+
 module.exports = router;

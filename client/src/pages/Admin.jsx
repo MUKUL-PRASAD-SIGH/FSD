@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import { Avatar, CountUp, Reveal, Ring } from '../ui.jsx';
+import { Analytics, AdminAI } from './AdminAnalytics.jsx';
+import AdminReview from './AdminReview.jsx';
 import './admin.css';
 
 const ago = (d) => { if (!d) return 'never'; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
@@ -267,12 +269,12 @@ function Audit() {
   );
 }
 
-const TABS = [['overview', 'Overview', '◎'], ['sources', 'Sources', '⇄'], ['listers', 'Listers', '✓'], ['users', 'Users', '☺'], ['listings', 'Listings', '▤'], ['integrations', 'Integrations', '⚙'], ['audit', 'Audit log', '≣']];
+const TABS = [['overview', 'Overview', '◎'], ['analytics', 'Analytics', '↗'], ['review', 'Review queue', '⚑'], ['ask AI', 'Ask AI', '✦'], ['sources', 'Sources', '⇄'], ['listers', 'Listers', '✓'], ['users', 'Users', '☺'], ['listings', 'Listings', '▤'], ['integrations', 'Integrations', '⚙'], ['audit', 'Audit log', '≣']];
 export default function Admin() {
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => { const t = new URLSearchParams(window.location.search).get('tab'); return ['analytics', 'review', 'ask AI'].includes(t) ? t : 'overview'; });
   const [msg, setMsg] = useState('');
   const [tick, setTick] = useState(0);
-  const map = { overview: Overview, sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
+  const map = { overview: Overview, analytics: Analytics, review: AdminReview, 'ask AI': AdminAI, sources: Sources, listers: Listers, users: Users, listings: Listings, integrations: Integrations, audit: Audit };
   const Tab = map[tab];
   return (
     <div className="ad">

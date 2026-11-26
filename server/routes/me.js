@@ -14,6 +14,10 @@ const { publicUser } = require('../utils/serialize');
 const { str, isUrl } = require('../utils/sanitize');
 const { shape } = require('./listings');
 const { audit } = require('../services/audit');
+const colleges = require('../services/colleges');
+const sms = require('../services/sms');
+const adminAlerts = require('../services/adminAlerts');
+const { gaps, GOALS } = require('../services/profileGaps');
 
 // Resumes are parsed in memory and never written to disk; only extracted fields are stored.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
@@ -34,7 +38,15 @@ router.use(protect);
 router.put('/profile', asyncRoute(async (req, res) => {
   const b = req.body || {};
   const u = req.user;
-  for (const [k, max] of [['name', 80], ['college', 160], ['bio', 600]]) if (typeof b[k] === 'string' && b[k].trim()) u[k] = str(b[k], max);
+  for (const [k, max] of [['name', 80], ['bio', 600]]) if (typeof b[k] === 'string' && b[k].trim()) u[k] = str(b[k], max);
+  // College: matched to the shared directory; a missing one is added (visible to the next user, queued for admin review)
+  let collegeMove = null;
+  if (typeof b.college === 'string' && b.college.trim()) {
+    const r = await colleges.resolve(b.college, u);
+    if (r.error) return res.status(400).json({ error: r.error, fields: { college: r.error } });
+    if (r.name !== u.college) collegeMove = { from: u.college, to: r.college, created: r.created };
+    u.college = r.name;
+  }
   if (typeof b.bio === 'string') u.bio = str(b.bio, 600);
   for (const k of ['githubUrl', 'linkedinUrl']) if (typeof b[k] === 'string') u[k] = b[k] && isUrl(b[k]) ? b[k].slice(0, 300) : '';
   if (Array.isArray(b.skills)) u.skills = uniq(b.skills);
@@ -49,9 +61,10 @@ router.put('/profile', asyncRoute(async (req, res) => {
   }
   if (b.preferences && typeof b.preferences === 'object') {
     const p = b.preferences;
-    u.preferences.modes = oneOf(p.modes, ['ONLINE', 'OFFLINE', 'HYBRID']);
-    u.preferences.types = oneOf(p.types, ['HACKATHON', 'CASE STUDY', 'CONTEST', 'CODING', 'INNOVATION', 'DESIGN', 'COMPETITION', 'QUIZ']);
-    u.preferences.cities = uniq(p.cities, 10);
+    // only the keys that were sent change, so partial updates (onboarding steps) never wipe other preferences
+    if (Array.isArray(p.modes)) u.preferences.modes = oneOf(p.modes, ['ONLINE', 'OFFLINE', 'HYBRID']);
+    if (Array.isArray(p.types)) u.preferences.types = oneOf(p.types, ['HACKATHON', 'CASE STUDY', 'CONTEST', 'CODING', 'INNOVATION', 'DESIGN', 'COMPETITION', 'QUIZ']);
+    if (Array.isArray(p.cities)) u.preferences.cities = uniq(p.cities, 10);
     if (typeof p.freeOnly === 'boolean') u.preferences.freeOnly = p.freeOnly;
     if (typeof p.willingToTravel === 'boolean') u.preferences.willingToTravel = p.willingToTravel;
     if (p.minPrizeInr != null) u.preferences.minPrizeInr = Math.min(1e8, Math.max(0, Number(p.minPrizeInr) || 0));
@@ -61,18 +74,78 @@ router.put('/profile', asyncRoute(async (req, res) => {
     if (typeof b.social.lookingForTeam === 'boolean') u.social.lookingForTeam = b.social.lookingForTeam;
     if (typeof b.social.headline === 'string') u.social.headline = str(b.social.headline, 120);
   }
-  if (b.privacy && typeof b.privacy === 'object' && typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
+  if (b.privacy && typeof b.privacy === 'object') {
+    if (typeof b.privacy.shareQuestions === 'boolean') u.privacy.shareQuestions = b.privacy.shareQuestions;
+    if (typeof b.privacy.shareUsage === 'boolean') u.privacy.shareUsage = b.privacy.shareUsage;
+  }
   if (b.notify && typeof b.notify === 'object') {
     if (typeof b.notify.inApp === 'boolean') u.notify.inApp = b.notify.inApp;
     if (typeof b.notify.email === 'boolean') u.notify.email = b.notify.email;
     if (typeof b.notify.emailReminders === 'boolean') u.notify.emailReminders = b.notify.emailReminders;
     if (typeof b.notify.emailSocial === 'boolean') u.notify.emailSocial = b.notify.emailSocial;
+    if (typeof b.notify.smsReminders === 'boolean') {
+      if (b.notify.smsReminders && !u.phone?.verifiedAt) return res.status(400).json({ error: 'Verify your phone number first', fields: { phone: 'Verify your phone number first' } });
+      u.notify.smsReminders = b.notify.smsReminders;
+    }
     if (b.notify.minMatch != null) u.notify.minMatch = Math.min(100, Math.max(0, Number(b.notify.minMatch) || 0));
+  }
+  if (b.onboarding && typeof b.onboarding === 'object') {
+    if (Array.isArray(b.onboarding.goals)) u.onboarding.goals = b.onboarding.goals.filter((g) => GOALS.includes(g)).slice(0, GOALS.length);
+    if (b.onboarding.complete === true) u.onboarding.completedAt = new Date();
+    if (b.onboarding.skip === true && !u.onboarding.completedAt) u.onboarding.skippedAt = new Date();
   }
   // role, plan, lister.approvalStatus and tokenVersion are deliberately NOT assignable here
   await u.save();
+  if (collegeMove) {
+    await colleges.moveUser(collegeMove.from, collegeMove.to).catch(() => {});
+    if (collegeMove.created) adminAlerts.newCollege(collegeMove.to, u).catch(() => {});
+  }
   res.json({ user: publicUser(u) });
 }));
+
+// ---- Phone for SMS / WhatsApp reminders: send a one-time code, confirm it, or remove the number ----------------------
+// Codes are sent by Twilio Verify. At most 3 code requests per person per hour (on top of the route rate limit).
+router.post('/phone/start', heavyLimiter, asyncRoute(async (req, res) => {
+  const phone = sms.normalizePhone(req.body?.phone);
+  if (!phone) return res.status(400).json({ error: 'Enter a valid mobile number, e.g. 98765 43210 or +91 98765 43210', fields: { phone: 'Invalid number' } });
+  const channel = req.body?.channel === 'whatsapp' ? 'whatsapp' : 'sms';
+  const u = req.user;
+  const recent = (u.phone?.codeSends || []).filter((d) => Date.now() - new Date(d).getTime() < 3600000);
+  if (recent.length >= 3) return res.status(429).json({ error: 'Too many codes requested. Try again in an hour.' });
+  const taken = await User.exists({ _id: { $ne: u._id }, 'phone.number': phone, 'phone.verifiedAt': { $ne: null } });
+  if (taken) return res.status(409).json({ error: 'That number is already verified on another account.' });
+  await sms.startVerification(phone, channel);
+  u.phone.pending = phone; u.phone.channel = channel; u.phone.codeSends = [...recent, new Date()];
+  await u.save();
+  audit(req, 'phone.code_sent', { meta: { to: sms.mask(phone), channel } });
+  res.json({ ok: true, sentTo: sms.mask(phone), channel });
+}));
+
+router.post('/phone/verify', heavyLimiter, asyncRoute(async (req, res) => {
+  const u = req.user;
+  const code = String(req.body?.code || '').replace(/\D/g, '');
+  if (!u.phone?.pending) return res.status(400).json({ error: 'Request a code first' });
+  if (!/^\d{4,10}$/.test(code)) return res.status(400).json({ error: 'Enter the code from the message', fields: { code: 'Invalid code' } });
+  if (!(await sms.checkVerification(u.phone.pending, code))) return res.status(400).json({ error: 'That code is wrong or has expired', fields: { code: 'Wrong code' } });
+  // codeSends is kept on purpose: the hourly limit must survive verify/remove, or it could be bypassed to send paid texts
+  u.phone.number = u.phone.pending; u.phone.pending = ''; u.phone.verifiedAt = new Date();
+  if (req.body?.enableReminders !== false) u.notify.smsReminders = true;
+  await u.save();
+  audit(req, 'phone.verified', { meta: { to: sms.mask(u.phone.number), channel: u.phone.channel } });
+  res.json({ user: publicUser(u) });
+}));
+
+router.delete('/phone', asyncRoute(async (req, res) => {
+  const u = req.user;
+  u.phone = { number: '', pending: '', verifiedAt: undefined, channel: 'sms', codeSends: u.phone?.codeSends || [] }; // keep the send history (rate limit)
+  u.notify.smsReminders = false;
+  await u.save();
+  audit(req, 'phone.removed');
+  res.json({ user: publicUser(u) });
+}));
+
+// What the recommender still needs from this person (drives the /welcome onboarding)
+router.get('/onboarding', asyncRoute(async (req, res) => res.json({ ...gaps(req.user), goalOptions: GOALS })));
 
 // ---- Resume parsing + indexing: Pro only -------------------------------------------------
 router.post('/resume', requirePro, heavyLimiter, upload.single('resume'), asyncRoute(async (req, res) => {

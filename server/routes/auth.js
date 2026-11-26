@@ -14,6 +14,7 @@ const { sendMail } = require('../services/mailer');
 const google = require('../services/google');
 const { isBreached } = require('../utils/breached');
 const { config } = require('../config/env');
+const { promoteIfAdminEmail } = require('../services/adminAccess');
 
 const MAX_FAILS = 5;
 const LOCK_MS = 15 * 60 * 1000;
@@ -45,7 +46,7 @@ async function notifyAdmins(user) {
 }
 
 router.get('/config', (_req, res) =>
-  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl })
+  res.json({ googleClientId: config.googleClientId || null, passwordMinLength: MIN_LENGTH, emailEnabled: !!config.smtpUrl, plansEnabled: config.plansEnabled, smsChannels: require('../services/sms').enabled() ? require('../services/sms').channels() : [] })
 );
 
 router.post('/password-check', authLimiter, (req, res) => {
@@ -103,6 +104,7 @@ router.post('/login', authLimiter, asyncRoute(async (req, res) => {
     return bad(res, 'Invalid email or password', 401);
   }
   if (user.failedLogins || user.lockUntil) { user.failedLogins = 0; user.lockUntil = undefined; await user.save(); }
+  await promoteIfAdminEmail(user, req);
   audit(req, 'auth.login', { actor: user, target: user._id });
   res.json(session(user));
 }));
@@ -117,7 +119,14 @@ router.post('/google', authLimiter, asyncRoute(async (req, res) => {
   if (!user) {
     user = await User.findOne({ email: g.email });
     if (user) {
-      // Safe to link: Google has verified this email belongs to the same person
+      // Google has verified this email belongs to the person signing in now. If the account was never verified, its
+      // password may have been chosen by someone else who registered the address first (pre-hijacking): remove it and
+      // end every existing session, so only the inbox owner keeps access.
+      if (!user.emailVerified && user.hasPassword) {
+        user.password = undefined; user.hasPassword = false; user.passwordProvenAt = undefined;
+        user.tokenVersion += 1;
+        audit(req, 'auth.unverified_password_cleared', { actor: user, target: user._id });
+      }
       user.googleId = g.googleId;
       user.emailVerified = true;
       if (!user.avatar) user.avatar = g.avatar;
@@ -137,6 +146,7 @@ router.post('/google', authLimiter, asyncRoute(async (req, res) => {
     }
   }
   if (user.status !== 'active') return bad(res, 'This account has been disabled', 403);
+  await promoteIfAdminEmail(user, req, { via: 'google' });
   audit(req, 'auth.login', { actor: user, target: user._id, meta: { via: 'google' } });
   res.json({ ...session(user), isNew: user.createdAt && Date.now() - user.createdAt.getTime() < 5000 });
 }));
@@ -168,6 +178,8 @@ router.delete('/me', protect, authLimiter, asyncRoute(async (req, res) => {
     Saved.deleteMany({ user: user._id }),
     Notification.deleteMany({ user: user._id }),
     require('../models/UserQuery').deleteMany({ user: user._id }),
+    require('../models/Activity').deleteMany({ user: user._id }),
+    require('../models/UsageDay').deleteMany({ user: user._id }),
     require('../services/erase').eraseUser(user._id),
     Listing.updateMany({ createdBy: user._id }, { $set: { status: 'unpublished' } }), // keep records, take them offline
   ]);
@@ -207,10 +219,13 @@ router.post('/reset', authLimiter, asyncRoute(async (req, res) => {
   if (!pw.ok) return bad(res, 'Password is too weak', 400, { problems: pw.problems });
   if (await isBreached(password)) return bad(res, 'This password has appeared in a known data breach. Choose a different one.', 400, { problems: ['Appears in a known data breach'] });
   user.password = password;
+  // The reset link went to the inbox, so whoever set this password controls the email address
+  user.passwordProvenAt = new Date(); user.emailVerified = true;
   user.resetTokenHash = undefined; user.resetTokenExpires = undefined;
   user.failedLogins = 0; user.lockUntil = undefined;
   await user.save();
   audit(req, 'auth.password_reset', { actor: user, target: user._id });
+  await promoteIfAdminEmail(user, req, { via: 'reset' });
   res.json(session(user));
 }));
 
@@ -240,6 +255,7 @@ router.post('/verify', authLimiter, asyncRoute(async (req, res) => {
   user.emailVerified = true; user.verifyTokenHash = undefined; user.verifyTokenExpires = undefined;
   await user.save();
   audit(req, 'auth.email_verified', { actor: user, target: user._id });
+  await promoteIfAdminEmail(user, req, { via: 'verify' });
   res.json({ ok: true });
 }));
 

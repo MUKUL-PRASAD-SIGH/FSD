@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Home from './pages/Home.jsx';
 import Browse from './pages/Browse.jsx';
@@ -8,7 +8,9 @@ import Profile from './pages/Profile.jsx';
 import Tracker from './pages/Tracker.jsx';
 import Ask from './pages/Ask.jsx';
 import Assistant from './pages/Assistant.jsx';
-import Plan from './pages/Plan.jsx';
+import Plan from './premium/Plan.jsx';
+import Welcome from './pages/Welcome.jsx';
+import { Privacy, Terms } from './pages/Legal.jsx';
 import Lister from './pages/Lister.jsx';
 import Admin from './pages/Admin.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
@@ -19,6 +21,7 @@ import Teams from './pages/Teams.jsx';
 import TeamPage from './pages/TeamPage.jsx';
 import Chat from './pages/Chat.jsx';
 import { useRealtime } from './realtime.jsx';
+import { useAnalytics } from './analytics.js';
 import { API_ORIGIN, api } from './api.js';
 import { useToast } from './toast.jsx';
 import Logo from './Logo.jsx';
@@ -30,6 +33,30 @@ function Guard({ roles, children }) {
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
+}
+
+// Dev-only notice, shown only when the API reports its database is on this machine (not when it uses a shared one such as Atlas).
+function LocalDataBanner({ onDismiss }) {
+  const [local, setLocal] = useState(false);
+  useEffect(() => {
+    let live = true;
+    api.health().then((h) => { if (live) setLocal(h.localDb === true); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  if (!local) return null;
+  return <div className="banner"><span>Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</span><button className="banner-x" aria-label="Dismiss" onClick={onDismiss}>×</button></div>;
+}
+
+// New accounts land on the friendly setup once, until they finish or skip it (admins and organisers are not sent there)
+function useOnboardingRedirect(user) {
+  const nav = useNavigate();
+  const loc = useLocation();
+  useEffect(() => {
+    if (!user || user.role !== 'user' || user.onboarding?.done || user.onboarding?.skipped) return;
+    if (['/welcome', '/verify', '/reset', '/privacy', '/terms'].includes(loc.pathname)) return;
+    try { if (sessionStorage.getItem('welcome-seen')) return; sessionStorage.setItem('welcome-seen', '1'); } catch { /* storage blocked: still redirect once */ }
+    nav('/welcome', { replace: false });
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 function Theme() {
@@ -52,8 +79,10 @@ function VerifyBanner() {
 }
 
 export default function App() {
-  const { user, ready, logout, isPro } = useAuth();
+  const { user, ready, logout, isPro, plansEnabled } = useAuth();
+  useOnboardingRedirect(user);
   const { counts } = useRealtime();
+  useAnalytics(user);
   const [notes, reloadNotes] = useNotifications(!!user);
   const [hideBanner, setHideBanner] = useState(() => { try { return sessionStorage.getItem("hideDevBanner") === "1"; } catch { return false; } });
   const dismissBanner = () => { setHideBanner(true); try { sessionStorage.setItem("hideDevBanner", "1"); } catch { /* ignore */ } };
@@ -69,7 +98,7 @@ export default function App() {
           <NavLink to="/browse" className={link}>Browse</NavLink>
           {user?.role !== 'admin' && user?.role !== 'lister' && <NavLink to="/for-you" className={link}>For you</NavLink>}
           <NavLink to="/ask" className={link}>Ask</NavLink>
-          {user && <NavLink to="/assistant" className={link}>Assistant{!isPro && <span className="pill tiny">Pro</span>}</NavLink>}
+          {user && <NavLink to="/assistant" className={link}>Assistant{plansEnabled && !isPro && <span className="pill tiny">Pro</span>}</NavLink>}
           {user && <NavLink to="/tracker" className={link}>Tracker</NavLink>}
           {user && <NavLink to="/network" className={link}>Network{counts.pending > 0 && <b className="badge static">{counts.pending}</b>}</NavLink>}
           {user && <NavLink to="/teams" className={link}>Teams</NavLink>}
@@ -82,7 +111,7 @@ export default function App() {
           {user ? (
             <>
               <Bell data={notes} reload={reloadNotes} />
-              <NavLink to="/plan" className="btn ghost pro-pill"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z" /></svg>{isPro ? 'Pro' : 'Upgrade'}</NavLink>
+              {plansEnabled && <NavLink to="/plan" className="btn ghost pro-pill"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5L3 7Z" /></svg>{isPro ? 'Pro' : 'Upgrade'}</NavLink>}
               <NavLink to="/profile" className="btn ghost avatar-btn" aria-label={`Profile: ${user.name}`} title={user.name}>{user.name.trim().charAt(0).toUpperCase()}</NavLink>
               <button className="btn ghost" onClick={logout}>Sign out</button>
             </>
@@ -94,7 +123,7 @@ export default function App() {
           )}
         </div>
       </header>
-      {import.meta.env.DEV && !API_ORIGIN && !hideBanner && <div className="banner"><span>Local development data is stored on this computer. To share users and requests, point every browser at one public API backed by a shared database.</span><button className="banner-x" aria-label="Dismiss" onClick={dismissBanner}>×</button></div>}
+      {import.meta.env.DEV && !API_ORIGIN && !hideBanner && <LocalDataBanner onDismiss={dismissBanner} />}
       <VerifyBanner />
       <main id="main">
         {ready && (
@@ -117,7 +146,10 @@ export default function App() {
             <Route path="/chat" element={g(null, <Chat />)} />
             <Route path="/chat/:roomId" element={g(null, <Chat />)} />
             <Route path="/notifications" element={g(null, <Notifications />)} />
-            <Route path="/plan" element={g(null, <Plan />)} />
+            {plansEnabled && <Route path="/plan" element={g(null, <Plan />)} />}
+            <Route path="/welcome" element={g(null, <Welcome />)} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/profile" element={g(null, <Profile />)} />
             <Route path="/lister" element={g(['lister', 'admin'], <Lister />)} />
             <Route path="/admin" element={g(['admin'], <Admin />)} />
@@ -129,6 +161,8 @@ export default function App() {
         <span>HackElite — listings link to the organiser, where you register.</span>
         <a href="/api/listings/calendar.ics">Subscribe to deadlines (.ics)</a>
         <a href="/api/listings">JSON API</a>
+        <NavLink to="/privacy">Privacy</NavLink>
+        <NavLink to="/terms">Terms</NavLink>
       </footer>
     </>
   );
